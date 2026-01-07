@@ -1,0 +1,200 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{afb4befc-b554-469f-87e7-d17c77ebe49a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="imgui">
+      <UniqueIdentifier>{2b8eb95a-2a84-4a1b-af19-3300ce08e93b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Library Code">
+      <UniqueIdentifier>{b165832a-50d4-4027-ad70-32d2084f1356}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="imgui\Nodes">
+      <UniqueIdentifier>{5a8b6914-d417-486e-aa56-a5020dbe0cbf}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GUI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Logger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Program.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\FileIO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\imgui.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\imgui_demo.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\imgui_draw.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\imgui_impl_dx11.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\imgui_impl_win32.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\imgui_tables.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\imgui_widgets.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\implot\implot.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\implot\implot_demo.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imgui\implot\implot_items.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AudioEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\JuceLibraryCode\include_juce_audio_basics.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="source\JuceLibraryCode\include_juce_audio_devices.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="source\JuceLibraryCode\include_juce_audio_formats.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="source\JuceLibraryCode\include_juce_core.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="source\JuceLibraryCode\include_juce_core_CompilationTime.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="source\JuceLibraryCode\include_juce_data_structures.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="source\JuceLibraryCode\include_juce_dsp.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="source\JuceLibraryCode\include_juce_events.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AudioSignalEffects.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AudioDeviceNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Libraries\imgui-node-editor\imgui_canvas.cpp">
+      <Filter>imgui\Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor.cpp">
+      <Filter>imgui\Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor_api.cpp">
+      <Filter>imgui\Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Libraries\imgui-node-editor\crude_json.cpp">
+      <Filter>imgui\Nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AudioNodes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\GUI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\mainHeader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Program.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\FileIO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imconfig.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imgui.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imgui_impl_dx11.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imgui_impl_win32.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imgui_internal.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\implot\implot.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\implot\implot_internal.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imstb_rectpack.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imstb_textedit.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imstb_truetype.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\JuceLibraryCode\JuceHeader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioSignalEffects.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioDeviceNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Libraries\imgui-node-editor\crude_json.h">
+      <Filter>imgui\Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_bezier_math.h">
+      <Filter>imgui\Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_canvas.h">
+      <Filter>imgui\Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_extra_math.h">
+      <Filter>imgui\Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor.h">
+      <Filter>imgui\Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor_internal.h">
+      <Filter>imgui\Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioNodes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

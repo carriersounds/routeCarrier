@@ -10,24 +10,24 @@
 class AudioNode {
 public:
 
-	AudioNode(BlockType blocktype, juce::String initDeviceName, size_t nodeID);
+	AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 
-	size_t ID;
+	NodeID ID;
 	juce::String Name;
 	BlockType m_blockType;
 	
-	size_t inputPin;
-	size_t outputPin;
+	PinID inputPin;
+	PinID outputPin;
 	
 
-	void addPin(size_t pinID, pinType type) { 
+	void addPin(PinID pinID, pinType type) { 
 		
 		if (type == pinType::input) inputPin = pinID;
 		if (type == pinType::output) outputPin = pinID;
 	
 	}
 
-	pinType hasPin(size_t pinID) const {
+	pinType hasPin(PinID pinID) const {
 		if (inputPin == pinID) return pinType::input;
 		if (outputPin == pinID) return pinType::output;
 		return pinType::null;

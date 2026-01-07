@@ -1,7 +1,6 @@
 .vs/
 bin/
 obj/
-assets/Logs
 *.user
 *.suo
 *.log

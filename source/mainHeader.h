@@ -44,6 +44,9 @@
 namespace ed = ax::NodeEditor;
 namespace node = ax::NodeEditor;
 
+#define BLOCKSIZE 512
+#define FIFOSIZE 2048
+
 
 //#include <winsock2.h>               // had to be included after imgui for some reason
 #pragma comment(lib, "Ws2_32.lib")
@@ -60,10 +63,20 @@ typedef vector<BYTE> bytearray;
 typedef vector<uint16_t> int16array;
 typedef std::chrono::high_resolution_clock::time_point timepoint;
 
+typedef size_t NodeID;
+typedef size_t PinID;
+typedef size_t LinkID;
+typedef size_t BaseID;
+
 using std::unique_ptr;
 using std::shared_ptr;
 using std::make_shared;
 
+enum class EffectType {
+    Filter,
+    Phaser,
+    Gain
+};
 
 struct BlockLink {
     BlockLink(node::LinkId id , node::PinId left, node::PinId right):ID(id), ID_left(left), ID_right(right){}

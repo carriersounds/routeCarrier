@@ -1,15 +1,14 @@
 #include "AudioEngine.h"
 #include "Program.h"
 
-AudioEngine::AudioEngine(Program* prog) : prog(prog), nullDevice(BlockType::NullDevice,"",1000){
+AudioEngine::AudioEngine(Program* prog) : 
+    prog(prog), nullDevice(BlockType::NullDevice,"",1000){
 
-    uniqueID = 1000;    // null device starts at 0
-
-    mainBuffer.setSize(2, BLOCKSIZE);  // 2 channel, 256 samples   
-
+    uniqueID = 1000;    // null device starts at 1000
 
     audio_engine_on = true;
     audiothread = std::thread(&AudioEngine::run, this);
+
 
 }
 void AudioEngine::run() {
@@ -28,11 +27,11 @@ void AudioEngine::run() {
         // FIFO state is the only reliable clock in a decoupled audio engine.
         // condition variable, lock audio thread until output/input fifo are "ready"
 
-        Logger::log(threadTimer.getDurationLoopString() + " for all processing");
+       // Logger::log(threadTimer.getDurationLoopString() + " for all processing");
         
         requestNewAudioBlock.wait();            // wait for output fifo to empty below BLOCKSIZE
 
-        Logger::log(threadTimer.getDurationLoopString() + " waited");   // wait ~10 ms, processing  = ~20-30 us
+       // Logger::log(threadTimer.getDurationLoopString() + " waited");   // wait ~10 ms, processing  = ~20-30 us
 
         // 2. READ all input fifo's  once
         for (auto& device : hardwareBlocks)
@@ -57,16 +56,49 @@ void AudioEngine::run() {
 
         for (auto& link : links) {
 
-            size_t correspondingInputNode = m_PinNodePairs.at(link.second.ID_left.Get());
+            NodeID nodeLeftOfLink = m_PinNodePairs.at(link.second.ID_left.Get()); 
+            NodeID nodeRightOfLink = m_PinNodePairs.at(link.second.ID_right.Get());
 
+            // check if input or output = DSPNode, input or output device node
+
+            juce::AudioBuffer<float>* currentLinkInput = nullptr;
+            juce::AudioBuffer<float>* currentLinkOutput = nullptr;
+
+
+            // TODO: make sure audio always flows from left to right, so input devices first, then dsp, then output devices
+
+
+            // HW input
+            if (hardwareBlocks.contains(nodeLeftOfLink)) {
+                currentLinkInput = &inputBuffers[nodeLeftOfLink];
+                Logger::log("Engine: hardware input");
+            }
+
+            // DSP input
+            if (DSPBlocks.contains(nodeRightOfLink)) {
+                currentLinkOutput = &DSPBlocks[nodeRightOfLink]->inputBuffer;
+                Logger::log("Engine: DSP input link");
+            }
+
+            // DSP output
+            if (DSPBlocks.contains(nodeLeftOfLink)){
+
+                DSPBlocks[nodeLeftOfLink]->process();
+                currentLinkInput = &DSPBlocks[nodeLeftOfLink]->outputBuffer;    // output, since you can only read from a DSP output pin
+                Logger::log("Engine: DSP output link (process)");
+            }
+               
+            // HW output
+            if (hardwareBlocks.contains(nodeRightOfLink)) {
+                currentLinkOutput = &outputBuffers[nodeRightOfLink];
+                Logger::log("Engine: hardware output");
+            } 
             
-            size_t correspondingOutNode = m_PinNodePairs.at(link.second.ID_right.Get());
-
-
-
-
-            // ONLY WORKS FOR HW-HW LINKS ! NO DSP BUFFERS YET
-            mixInto(outputBuffers[correspondingOutNode], inputBuffers[correspondingInputNode]);  // copy inputs to outputs. 
+            // copy inputs to outputs.
+            if (currentLinkInput != nullptr && currentLinkOutput != nullptr)
+                copyBuffer(*currentLinkOutput, *currentLinkInput);
+            else
+                Logger::log("Buffer was nullptr!");
 
         }
 
@@ -75,13 +107,10 @@ void AudioEngine::run() {
         // check links
         // resolve graph   
         // read the correct input buffers;
-        // 
         // process audio
-        // 
         // prepare / mix output buffers
 
-
-        mainBuffer.applyGain(gain);
+      //  mainBuffer.applyGain(gain);
 
 
         // And send output buffers to HW FIFO's
@@ -128,39 +157,39 @@ void AudioEngine::mixInto(juce::AudioBuffer<float>& dest,const juce::AudioBuffer
 }
 
 
-size_t AudioEngine::getNewID(Identifier type) {
+BaseID AudioEngine::getNewID(Identifier type) {
 
-    size_t value = uniqueID++;
+
+    uniqueID++;
+    
 
    //  if (type == Identifier::link)
-         
    //  if (type == Identifier::node)
-
    //  if (type == Identifier::pin)
 
-    return value;
+    return uniqueID++;
 }
 
+// TODO: CHECK FOR FEEDBACK LOOPS: any output to connect: disable all inputs "before" this signal chain, so it can't even be created (this maintains the non-loopness)
 void AudioEngine::createLink(node::PinId leftPin, node::PinId rightPin) {
 
-    size_t nextID = getNewID(Identifier::link);
+    LinkID nextID = getNewID(Identifier::link);
 
     links.emplace(nextID, BlockLink(nextID, leftPin, rightPin));
 
 }
 
-void AudioEngine::deleteLink(size_t linkID) {
+void AudioEngine::deleteLink(LinkID linkID) {
 
     links.erase(linkID);
 }
 
-
 //returns the next Block ID, also creates new pin ID
-size_t AudioEngine::addNewDeviceBlock(BlockType blockType, juce::String initDeviceName) {
+NodeID AudioEngine::addNewDeviceBlock(BlockType blockType, juce::String initDeviceName) {
 
     // create 2 new IDs. 1 for device, 1 for pin
-    size_t blockID = getNewID(Identifier::node);
-    size_t pinID = getNewID(Identifier::pin);
+    NodeID blockID = getNewID(Identifier::node);
+    PinID pinID = getNewID(Identifier::pin);
 
     hardwareBlocks[blockID] = std::make_unique<DeviceNode>(blockType, initDeviceName, blockID);        // add new block
 
@@ -190,9 +219,25 @@ size_t AudioEngine::addNewDeviceBlock(BlockType blockType, juce::String initDevi
 
 }
 
-void AudioEngine::deleteDeviceBlock(size_t deviceID) {
+NodeID AudioEngine::addNewDSPNode(const juce::String& name) {
 
-    vector<size_t> linksToDelete;
+    NodeID blockID = getNewID(Identifier::node);            // get new IDs for node and pins
+    PinID inputPinID = getNewID(Identifier::pin);
+    PinID outputPinID = getNewID(Identifier::pin);
+
+    DSPBlocks[blockID] = std::make_unique<DSPNode>(BlockType::DSP, name, blockID);      // create new DSPNode
+    DSPBlocks[blockID]->addPin(inputPinID, pinType::input);                             // assign pins
+    DSPBlocks[blockID]->addPin(outputPinID, pinType::output);
+
+    m_PinNodePairs.emplace(inputPinID, blockID);                                        // save pin assignment in LUT
+    m_PinNodePairs.emplace(outputPinID, blockID);
+
+    return blockID;
+}
+
+void AudioEngine::deleteDeviceBlock(NodeID deviceID) {
+
+    vector<LinkID> linksToDelete;
 
     // Break all connected links
     if (node::HasAnyLinks((node::NodeId)deviceID)) {
@@ -213,10 +258,11 @@ void AudioEngine::deleteDeviceBlock(size_t deviceID) {
 
 }
 
-void AudioEngine::initDSP(double sr, int bs) {
-   //inputDevice.initDSP(sr, bs);
-}
+void AudioEngine::selectAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput) {
 
-void AudioEngine::selectDevice(const juce::String& nameToFind, bool isOutput) {
-  // inputDevice.selectDevice(nameToFind, isOutput);
+    if (hardwareBlocks.contains(deviceID))
+        hardwareBlocks[deviceID]->selectDevice(nameToFind, isOutput);
+    else
+        Logger::log("Invalid audio device node selected", level_ERROR, source_AUDIO);
+
 }

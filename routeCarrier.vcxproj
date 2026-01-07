@@ -175,7 +175,7 @@
     <ClCompile Include="source\Logger.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\Program.cpp" />
-    <ClCompile Include="source\AudioSignalEffects.cpp" />
+    <ClCompile Include="source\AudioDSPNode.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\Libraries\imgui-node-editor\crude_json.h" />
@@ -203,7 +203,7 @@
     <ClInclude Include="source\mainHeader.h" />
     <ClInclude Include="source\Logger.h" />
     <ClInclude Include="source\Program.h" />
-    <ClInclude Include="source\AudioSignalEffects.h" />
+    <ClInclude Include="source\AudioDSPNode.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

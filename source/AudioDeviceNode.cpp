@@ -1,7 +1,7 @@
 ﻿#include "AudioDeviceNode.h"
 #include "Program.h"
 
-DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, size_t nodeID)
+DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID)
         : hardwareFIFO(FIFOSIZE), 
         numChannels(2), 
         m_isMainOutput(false), 
@@ -28,7 +28,6 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, size_t 
 
     deviceManager.setAudioDeviceSetup(setup, true);
     blockSize = BLOCKSIZE;
-
 
     if (err.isNotEmpty())
         throw std::runtime_error(err.toStdString());

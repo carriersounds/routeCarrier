@@ -50,7 +50,7 @@
 class DeviceNode : public juce::AudioIODeviceCallback, public AudioNode
 {
 public:
-    DeviceNode(BlockType blocktype, juce::String initDeviceName, size_t nodeID);
+    DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 
 
     ~DeviceNode(){

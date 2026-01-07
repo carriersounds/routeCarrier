@@ -95,7 +95,7 @@
     <ClCompile Include="source\JuceLibraryCode\include_juce_events.cpp">
       <Filter>JUCE Library Code</Filter>
     </ClCompile>
-    <ClCompile Include="source\AudioSignalEffects.cpp">
+    <ClCompile Include="source\AudioDSPNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\AudioDeviceNode.cpp">
@@ -169,7 +169,7 @@
     <ClInclude Include="source\JuceLibraryCode\JuceHeader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="source\AudioSignalEffects.h">
+    <ClInclude Include="source\AudioDSPNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="source\AudioDeviceNode.h">

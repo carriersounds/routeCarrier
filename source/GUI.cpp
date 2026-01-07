@@ -306,48 +306,7 @@ void GUI::renderMenuBar() {
         
         if (ImGui::BeginMenu("Audio")) {
 
-                static auto& deviceTypes = prog->audio.nullDevice.deviceManager.getAvailableDeviceTypes();
-                static juce::AudioIODeviceType* type = deviceTypes.getFirst();                                      // takes WASAPI, maybe check for Low Latency?
-
-                static juce::StringArray inputs;
-                static juce::StringArray outputs;
-
-                // update audio device list every 2 seconds
-
-                if ((ImGui::GetFrameCount() % 120) == 0) {
-                    type->scanForDevices();                 // must call to populate names
-                    inputs = type->getDeviceNames(true);    // true = input
-                    outputs = type->getDeviceNames(false);  // false = output
-                }
-
-                ImGui::MenuItem("Inputs");
-                ImGui::Separator();
-                
-                for (auto& s : inputs) {
-                    if (ImGui::MenuItem(("IN: " + s.toStdString()).c_str())) {
-                        juce::String chosenInput(s.getCharPointer());
-                        prog->audio.selectDevice(chosenInput, false);
-                    }
-                }                
-                
-                ImGui::Separator();
-                
-                ImGui::MenuItem("Outputs");
-                ImGui::Separator();
-                
-                for (auto& s : outputs) {
-                    if (ImGui::MenuItem(("OUT: " + s.toStdString()).c_str())) {
-                        juce::String chosenOutput(s.getCharPointer());
-                        prog->audio.selectDevice(chosenOutput, true);
-                    }
-
-                }
-                
-
-                if (ImGui::BeginMenu("Version Information")) {
-
-                    ImGui::EndMenu();
-                }
+               if(ImGui::MenuItem("ADD EFFECT BLOCK"))  prog->audio.addNewDSPNode("TEST EFFECT");           
 
                 ImGui::EndMenu();
             }
@@ -576,6 +535,52 @@ void GUI::renderMixPanel() {
         node::EndNode();
     }
 
+    for (auto& effectBlock : prog->audio.DSPBlocks) {
+
+        node::BeginNode(effectBlock.first);
+        ImGui::Text(effectBlock.second->getName().c_str());
+
+        // Custom divider 
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        float w = node::GetNodeSize(effectBlock.first).x - pinSize - spacing - spacing;
+        ImGui::GetWindowDrawList()->AddLine(
+            p,
+            ImVec2(p.x + w, p.y),
+            IM_COL32(120, 120, 120, 255)
+        );
+        ImGui::Dummy(ImVec2(0, 6)); // spacing after divider
+        ImGui::NewLine();
+
+        // INPUT PIN
+        const char* labelin = "> IN";
+        ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
+        node::BeginPin(effectBlock.second->inputPin, ed::PinKind::Input);  // create N input pins             
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + spacing * 2);
+
+        ImGui::TextUnformatted(labelin);
+        node::EndPin();
+
+        // OUTPUT PIN         
+        const char* labelout = "OUT >";
+        ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
+        float avail = node::GetNodeSize(effectBlock.first).x - spacing;
+        
+        // Move cursor to the right edge
+        ImGui::SetCursorPosX(
+            ImGui::GetCursorPosX() + avail - textSizeOut.x - (2 * (pinSize + spacing))
+        );
+
+        node::BeginPin(effectBlock.second->outputPin, ed::PinKind::Output);  // create N input pins
+        ImGui::TextUnformatted(labelout);
+        ImGui::SameLine();
+        
+        node::EndPin();
+        node::EndNode();
+
+
+
+
+    }
 
     for (auto& link : prog->audio.links) {
         node::Link(link.second.ID, link.second.ID_left, link.second.ID_right);
@@ -674,7 +679,7 @@ void GUI::renderMixPanel() {
     for (auto& s : outputs) {
         if (ImGui::MenuItem(("OUT: " + s.toStdString()).c_str())) {
             juce::String chosenOutput(s);
-            size_t next_ID = prog->audio.addNewDeviceBlock(BlockType::OutputDevice, chosenOutput);
+            NodeID next_ID = prog->audio.addNewDeviceBlock(BlockType::OutputDevice, chosenOutput);
 
 
         }

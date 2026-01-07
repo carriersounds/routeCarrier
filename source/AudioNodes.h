@@ -7,7 +7,7 @@
 
 // base class
 
-struct AudioNode {
+class AudioNode {
 public:
 
 	AudioNode(BlockType blocktype, juce::String initDeviceName, size_t nodeID);
@@ -18,9 +18,6 @@ public:
 	
 	size_t inputPin;
 	size_t outputPin;
-
-	vector<size_t> connections;
-
 	
 
 	void addPin(size_t pinID, pinType type) { 

@@ -165,7 +165,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
                                                   int numSamples, const juce::AudioIODeviceCallbackContext&) {
 
     // switch deviceNodeType {
-    // process ()
+    // process ()5
     // if (includesProcessing) {
 
     if (m_blockType == BlockType::InputDevice) {
@@ -180,11 +180,13 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         // Input overflow → intentionally drop this block
         // This protects output timing stability
 
+        int samplesWritten = 0;
 
         if (!fifoTooFull)
         {
             const float* data = this->data.getWritePointer(0);
-  
+
+            // SRC
             if (0 && sampleRate < 47900) {
 
                 juce::AudioBuffer<float> SRCbuf(1, BLOCKSIZE);
@@ -194,13 +196,24 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
 
                 interpolator.process(ratio, inputChannelData[1], SRCbuf.getWritePointer(0), BLOCKSIZE);
 
-                writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), numSamples);
+                samplesWritten = writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), numSamples);
+                
+                if (samplesWritten > numSamples) {
+                    Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+                }
 
                 return;
             }
 
-            writeToFifoFrom(inputChannelData, numSamples);
+            samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
+            
+            if (samplesWritten > numSamples) {
+                Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+            }
 
+        }
+        else {
+            Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
         }
     }
 
@@ -210,7 +223,6 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
 
         int samplesRead = readFromFifoTo(outputChannelData, numSamples);
 
-        // does this even get triggered lol
         if (samplesRead < numSamples)
         {
 
@@ -244,7 +256,6 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
    
 
 }
-
 
 
 void DeviceNode::setAsMainOutput(juce::WaitableEvent* trigger) {

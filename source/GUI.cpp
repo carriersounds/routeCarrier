@@ -178,7 +178,10 @@ void GUI::renderAllModules() {
 
     // ImGui Rendering functions start
     renderMainDockSpace();
+    
     renderMixPanel();
+    renderToolbar();
+    renderDeviceList();
     renderMenuBar();
     renderLog();
  
@@ -429,26 +432,37 @@ void GUI::renderLog()
     prog->appLog.Draw("Log", &showLog);
 }
 
+void GUI::renderToolbar() {
+
+    ImGui::Begin("Toolbar");
+
+    ImVec2 size = ImGui::GetWindowSize();
+    const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+    ImRect bb(cursorPos, cursorPos + size);
+    drawGradientBackground(ImGui::GetWindowDrawList(), "Toolbar", bb, 0, 0, 0);
+
+
+    ImGui::TextWrapped("alle inputs en outputs in een mooie table krijgen\ndat je ze kan drag&droppen naar een node toe als begin/eindpunt.\nook dat je met dat drag&drop simpele DSP kan gooien op een signal chain");
+    // met text sorteren op virtual in/output of fysieke (laat handmatig sorteren actually). all
+    // 
+// put some MF ICONS BRUH
+
+    ImGui::End();
+
+}
+
 void GUI::renderMixPanel() {
 
-    
-    static auto& deviceTypes = prog->audio.nullDevice.deviceManager.getAvailableDeviceTypes();
-    static juce::AudioIODeviceType* type = deviceTypes.getFirst();                                      // takes WASAPI, maybe check for Low Latency?
+    ImGui::Begin("Mixing Panel", &showMixer, ImGuiWindowFlags_NoNavInputs);
 
-    static juce::StringArray inputs;
-    static juce::StringArray outputs;
+    node::SetCurrentEditor(node_Context);
+    node::Begin("editore", ImVec2(0.0, 0.0f));
 
-    {
-        ImGui::Begin("Mixing Panel", &showMixer, ImGuiWindowFlags_NoNavInputs);
+    static float pinSize = 12.0f;
+    static float spacing = 4.0f;
 
-        node::SetCurrentEditor(node_Context);
-        node::Begin("editore", ImVec2(0.0, 0.0f));
-
-        static float pinSize = 12.0f;
-        static float spacing = 4.0f;
-
-        // Draw input Nodes
-        for (auto& inputDevice : prog->audio.deviceNodes) {
+    // Draw input Nodes
+    for (auto& inputDevice : prog->audio.deviceNodes) {
 
             if (!inputDevice.second->isInput()) continue;
 
@@ -494,8 +508,8 @@ void GUI::renderMixPanel() {
 
         }
 
-        // Draw output Nodes
-        for (auto& outputDevice : prog->audio.deviceNodes) {
+    // Draw output Nodes
+    for (auto& outputDevice : prog->audio.deviceNodes) {
 
             if (!outputDevice.second->isOutput()) continue;
 
@@ -534,8 +548,8 @@ void GUI::renderMixPanel() {
             node::EndNode();
         }
 
-        // Draw DSP Nodes
-        for (auto& effectBlock : prog->audio.DSPNodes) {
+    // Draw DSP Nodes
+    for (auto& effectBlock : prog->audio.DSPNodes) {
 
             node::BeginNode(effectBlock.first);
             ImGui::Text(effectBlock.second->getBlockName().c_str());
@@ -578,13 +592,13 @@ void GUI::renderMixPanel() {
             node::EndNode();
         }
 
-        // Draw Links
-        for (auto& link : prog->audio.links) {
+    // Draw Links
+    for (auto& link : prog->audio.links) {
             node::Link(link.second.ID, link.second.ID_left, link.second.ID_right);
         }
 
-        // Query link creation
-        if (node::BeginCreate())                                            // GRAB PIN
+    // Query link creation
+    if (node::BeginCreate())                                            // GRAB PIN
         {
             node::PinId startPinId, endPinId;
             if (node::QueryNewLink(&startPinId, &endPinId))                 // HOVER OVER NEXT
@@ -604,8 +618,8 @@ void GUI::renderMixPanel() {
             }
         }
 
-        // Query link or node deletion
-        if (node::BeginDelete())
+    // Query link or node deletion
+    if (node::BeginDelete())
         {
             node::LinkId linkId;
             if (QueryDeletedLink(&linkId)) {
@@ -628,38 +642,31 @@ void GUI::renderMixPanel() {
         }
 
 
-        node::EndDelete();
-        node::EndCreate();
-        node::End();
-        node::SetCurrentEditor(nullptr);
+    node::EndDelete();
+    node::EndCreate();
+    node::End();
+    node::SetCurrentEditor(nullptr);
 
-        ImGui::End();
-    }
-
-    ImGui::Begin("Toolbar");
-
-    ImVec2 size = ImGui::GetWindowSize();
-    const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-    ImRect bb(cursorPos, cursorPos + size);
-    drawGradientBackground(ImGui::GetWindowDrawList(), "Toolbar", bb, 0, 0, 0);
-    
-    
-
-    ImGui::TextWrapped("alle inputs en outputs in een mooie table krijgen\ndat je ze kan drag&droppen naar een node toe als begin/eindpunt.\nook dat je met dat drag&drop simpele DSP kan gooien op een signal chain");
-        // met text sorteren op virtual in/output of fysieke (laat handmatig sorteren actually). all
-
-
-    
-    // put some MF ICONS BRUH
-    
-    
     ImGui::End();
-     
+    
+
+
+
+}
+
+void GUI::renderDeviceList() {
+
+
+    static auto& deviceTypes = prog->audio.nullDevice.deviceManager.getAvailableDeviceTypes();
+    static juce::AudioIODeviceType* type = deviceTypes.getFirst();                                      // takes WASAPI, maybe check for Low Latency?
+
+    static juce::StringArray inputs;
+    static juce::StringArray outputs;
+
 
     ImGui::Begin("Devices");
 
     // update audio device list every 2 seconds or on a button press
-
     if (ImGui::Button("refresh list") || (ImGui::GetFrameCount() % 120) == 0) {
         type->scanForDevices();                 // must call to populate names
         inputs = type->getDeviceNames(true);    // true = input
@@ -672,10 +679,10 @@ void GUI::renderMixPanel() {
     for (auto& s : inputs) {
         if (ImGui::MenuItem(("IN: " + s.toStdString()).c_str())) {
             juce::String chosenInput(s);
-            prog->audio.addNewDeviceNode(BlockType::InputDevice,chosenInput);
+            prog->audio.addNewDeviceNode(BlockType::InputDevice, chosenInput);
         }
     }
-    
+
     ImGui::Separator();
 
     ImGui::MenuItem("Outputs");
@@ -689,7 +696,7 @@ void GUI::renderMixPanel() {
 
         }
 
-            
+
 
     }
 
@@ -701,6 +708,8 @@ void GUI::renderMixPanel() {
 
 void GUI::renderGraph() {
 
+    return;
+    /*
     if (!showTimings) return;
 
     ImGui::Begin("Process timers", &showTimings, ImGuiWindowFlags_NoFocusOnAppearing);
@@ -709,19 +718,37 @@ void GUI::renderGraph() {
 
 
     static ScrollingBuffer guiData;
-    static vector<ScrollingBuffer> levels;
+    static std::map<NodeID,ScrollingBuffer> levels;
 
-    if (prog->audio.levels.size() > levels.size()) levels.push_back(ScrollingBuffer());
+    for (auto& dev : prog->audio.fifoLevels) {
 
+        if (!levels.contains(dev.first))
+            levels.emplace(dev.first,ScrollingBuffer());      // if it doesnt contain an entry for the device/pin yet, add it!
+
+        if (dev.second->isInput()) {
+            levels.emplace(dev.second->outputPin, ScrollingBuffer());
+        }
+        else {
+            levels.emplace(dev.second->inputPin, ScrollingBuffer());
+        }
+
+    }
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 
-    for (int i = 0; i < levels.size(); i++) {
-        auto& level = levels[i];
-        level.AddPoint(t,prog->audio.levels[i]);
+
+    for (auto& dev : prog->audio.fifoLevels){
+        levels[dev.first].AddPoint(t, prog->audio.fifoLevels[dev.first]);
+
+        if (dev.second->isInput()) {
+            levels[dev.second->outputPin].AddPoint(t, prog->audio.fifoLevels[dev.second->outputPin]);
+        }
+        else {
+            levels[dev.second->outputPin].AddPoint(t, prog->audio.fifoLevels[dev.second->outputPin]);
+        }
     } 
 
-    guiData.AddPoint(t, 1000.0 / fr);           // TODO: make option to pause graphing (halt)
+   // guiData.AddPoint(t, 1000.0 / fr);           // TODO: make option to pause graphing (halt)
 
     static float history = 2.0f;
     static float sleeperMicroseconds = 500;
@@ -740,28 +767,40 @@ void GUI::renderGraph() {
         ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 3000);
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
 
-        for (int i = 0; i < levels.size(); i++) {
+
+        for (auto& dev : prog->audio.fifoLevels) {
 
             //string type = prog->audio.hardwareBlocks.at(i)->isInput() ? " (input)" : " (output)";
             
-            int actualChannel = i >> 1;
-            string actualName = "chan" + to_string(i >> 1);//prog->audio.hardwareBlocks.at(actualChannel)->getName();
+            string actualName = prog->audio.deviceNodes[dev.first]->getBlockName();     // only time we actually need to know what it is
+            BaseID readable = dev.first;         
+            BaseID writable;
 
-            string fifoInfo = (i % 2 == 0) ? " - readable from fifo" : " - writable to fifo";
+            if (dev.second->isInput()) {
+                writable = dev.second->outputPin;
+            } else {
+                writable = dev.second->inputPin;
+            }
+
+            // block ID is readable
+            // pin ID is writable
+
+            string devicePlusIDread = actualName + " readable";
+            string devicePlusIDwrite = actualName + " writable";
+
+            auto& levelR = levels[writable];
+            auto& levelW = levels[readable];
             
-            // 1 is readable
-            // 2 is writable
 
-            string devicePlusID = "Device " + to_string(i) + " : " + actualName + fifoInfo;
-            auto& level = levels[i];
-            ImPlot::PlotLine(devicePlusID.c_str(), &level.Data[0].x, &level.Data[0].y, level.Data.size(), 0, level.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine(devicePlusIDread.c_str(), &levelR.Data[0].x, &levelR.Data[0].y, levelR.Data.size(), 0, levelR.Offset,  sizeof(float));
+            ImPlot::PlotLine(devicePlusIDwrite.c_str(), &levelW.Data[0].x, &levelW.Data[0].y, levelW.Data.size(), 0, levelW.Offset,  sizeof(float));
         }
 
         ImPlot::EndPlot();
     }
 
     ImGui::End();
-
+    */
 }
 
 void GUI::sendGraphicsToGPU() {

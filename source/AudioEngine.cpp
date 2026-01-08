@@ -2,7 +2,7 @@
 #include "Program.h"
 
 AudioEngine::AudioEngine(Program* prog) : 
-    prog(prog), nullDevice(BlockType::NullDevice,"",1000),levels(10){
+    prog(prog), nullDevice(BlockType::NullDevice,"",1000){
 
     uniqueID = 1000;    // null device starts at ID = 1000
     audio_engine_on = true;
@@ -38,9 +38,6 @@ void AudioEngine::run() {
         // 1. READ all input fifo's  once
         for (auto& device : deviceNodes) {     
             if (device.second != nullptr && device.second->isInput()) {
-            
-                levels[0] = device.second->hardwareFIFO.getNumReady();
-                levels[1] = device.second->hardwareFIFO.getFreeSpace();
                 device.second->readFromFifoTo(inputBuffers[device.first].getArrayOfWritePointers(), BLOCKSIZE);            
             }
         }
@@ -95,9 +92,13 @@ void AudioEngine::run() {
         // 6. send output buffers to HW FIFO's
         for (auto& device : deviceNodes) {    
             if (device.second != nullptr && device.second->isOutput()) {
-                         
-                levels[2] = device.second->hardwareFIFO.getNumReady();
-                levels[3] = device.second->hardwareFIFO.getFreeSpace();
+                
+
+                if (device.second->isMainOutput()) {
+                    fifoLevels[0] = device.second->hardwareFIFO.getNumReady();
+                    fifoLevels[1] = device.second->hardwareFIFO.getFreeSpace();
+                }
+                
                 device.second->writeToFifoFrom(outputBuffers[device.first].getArrayOfReadPointers(), BLOCKSIZE);
             }
         }
@@ -178,9 +179,9 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     
 
     m_PinNodePairs.emplace(pinID, blockID);                             // make the parent node easier to find using a LUT
-    levels.push_back(0.0f);                                             // add 2 channels for fifo monitoring (debug)
-    levels.push_back(0.0f);
-
+                                                                        // add 2 channels for fifo monitoring (debug)
+   
+    fifoLevels.emplace(pinID, blockID);
     
     if (blockType == BlockType::InputDevice) inputBuffers.emplace(blockID,juce::AudioSampleBuffer(2, 512));        // add a buffer for any corresponding HW block
     if (blockType == BlockType::OutputDevice) outputBuffers.emplace(blockID, juce::AudioSampleBuffer(2, 512));
@@ -210,7 +211,6 @@ NodeID AudioEngine::addNewDSPNode(const juce::String& name) {
 
     return blockID;
 }
-
 
 void AudioEngine::deleteDSPNode(NodeID blockID) {
 

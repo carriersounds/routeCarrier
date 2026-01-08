@@ -37,11 +37,11 @@ public:
     {
         juce::dsp::AudioBlock<float> block(buffer);
 
-        if (!bypassed) {
+     //   if (!bypassed) {
             processDSP(block);
-        } else {
-            outputBuffer.makeCopyOf(inputBuffer, false);
-        }
+       // } else {
+       //     outputBuffer.makeCopyOf(inputBuffer, false);
+      //  }
 
         
     }

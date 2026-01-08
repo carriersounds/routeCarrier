@@ -174,17 +174,24 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         {
             const float* data = this->data.getWritePointer(0);
 
-            // SRC, not working currently
-            if (0 && sampleRate < 47900) {
+            // SRC, working currently :)
+            if (sampleRate < 47900) {    
 
-                juce::AudioBuffer<float> SRCbuf(1, BLOCKSIZE);
+                juce::AudioBuffer<float> SRCbuf(2, FIFOSIZE);
                 juce::LagrangeInterpolator interpolator;
                 double ratio = deviceManager.getAudioDeviceSetup().sampleRate / 48000;
-                interpolator.process(ratio, inputChannelData[1], SRCbuf.getWritePointer(0), BLOCKSIZE);
-                samplesWritten = writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), numSamples);
+                interpolator.process(ratio, inputChannelData[0], SRCbuf.getWritePointer(0), (double)BLOCKSIZE / ratio);
+                interpolator.process(ratio, inputChannelData[1], SRCbuf.getWritePointer(1), (double)BLOCKSIZE / ratio);
+
+                samplesWritten = writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), (double)BLOCKSIZE / ratio);
                 
+               //   samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
+
                 if (samplesWritten > numSamples) {
-         //           Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+                    // sample rate conversion worked (sort of)
+                }
+                if (samplesWritten < numSamples) {
+                    Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
                 }
                 return;
             }
@@ -192,10 +199,16 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
             
             if (samplesWritten > numSamples) {
-     //           Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+                Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
             }
+
+            if (samplesWritten < numSamples) {
+                Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+            }
+
+
         } else {
-//            Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
+            Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
         }
     }
 
@@ -205,7 +218,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         int samplesRead = readFromFifoTo(outputChannelData, numSamples);
         if (samplesRead < numSamples)
         {
-   //         Logger::log("UNDERRUN IN OUTPUT: SamplesRead(" + to_string(samplesRead) + ") < numSamples(" + to_string(numSamples) + ")");
+            Logger::log("UNDERRUN IN OUTPUT: SamplesRead(" + to_string(samplesRead) + ") < numSamples(" + to_string(numSamples) + ")");
 
             // Underrun → zero remaining output
             for (int ch = 0; ch < numOutputChannels; ++ch)      // only triggered once i believe, at the start?

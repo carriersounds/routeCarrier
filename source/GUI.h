@@ -79,6 +79,8 @@ private:
     void renderMainDockSpace();  
     void renderMenuBar();
     void renderMixPanel();
+    void renderDeviceList();
+    void renderToolbar();
 
     void renderLog();
     void renderGraph();

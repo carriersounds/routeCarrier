@@ -10,16 +10,10 @@
 
 class Program;
 
-// graph structure:
-// drag & drop to insert. . default = mix (add)
-
-
-// with block = 256: output fifo depth = 3 geeft 768 frames, 16ms latency
-
 /*
 TODO:
 
-V- make sure mixing into output actually works... now only the last copy is valid
++ make sure mixing into output actually works... now only the last copy is valid
 - Actual sample rate conversion
 - Handle node order, topological sort
 - this means re-work the loop in the main run() function for links
@@ -27,7 +21,8 @@ V- make sure mixing into output actually works... now only the last copy is vali
 - CHECK FOR FEEDBACK LOOPS: any output to connect: disable all inputs "before" this signal chain, so it can't even be created (this maintains the non-loopness)
 - proper fifo management
 - Create full channel strip, modular effects, working effects, processdoubler?
-V    - filters (low / band / hi)
+    + filters (low / band / hi)
+    + gain
     - EQ
     - compressor
     - reverb
@@ -36,7 +31,7 @@ V    - filters (low / band / hi)
 - Editable parameters through GUI
     - parameter ID / effect ID? created with ID++, depending on # of params
 - drag link up/down to set gain for that copy stage, buffer write operations = gain included always
-- delete input/output buffers when a device node gets deleted
++ delete input/output buffers when a device node gets deleted
 - make samplerate, blocksize and numchannels part of the base class. they all need it anyways. determined by engine params
 - BUG: sometimes when re-connecting nodes to new links, the audio doesn't pass. need to delete DSP block and create new one to solve...
 
@@ -63,7 +58,6 @@ Node Features:
 
 */
 
-
 class AudioEngine {
 public:
     AudioEngine(Program* prog);
@@ -83,11 +77,11 @@ public:
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
     std::map<NodeID, juce::AudioBuffer<float>> inputBuffers;
     std::map<NodeID, juce::AudioBuffer<float>> outputBuffers;
+    std::map<NodeID,float> fifoLevels;                              // for metering buffers
    // juce::AudioProcessorGraph DSPGRaph;
 
-
     // Node management
-    NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName);         // choose input or output, returns next ID
+    NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName);          // choose input or output, returns next ID
     NodeID addNewDSPNode(const juce::String& NodeName);                                 // effects = enum in function input, return is for GUI i think?   
     void deleteDeviceNode(NodeID deviceID);
     void deleteDSPNode(NodeID blockID);
@@ -101,14 +95,17 @@ public:
     void copyBuffer(juce::AudioBuffer<float>* dest,const juce::AudioBuffer<float>* src);
     void mixInto(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src);
 
-    // TBA
-    vector<juce::String> getDeviceNames();                              // (type ASIO / wasapi etc)
+
+    vector<juce::String> getDeviceNames();          // uses nullDevice, (type ASIO / wasapi etc)
+
+
+    // TBA                              
     void setDSPParameter(NodeID blockID,int effectID, float value);     // --> node indexing probably using some smartypants graph theory
     void modifyEffectBlock(NodeID blockID);                             // add or remove effect from the chain         
     void editNode(int action, NodeID nodeID);                           // enum action (remove/connect/split/merge), nodeID is how they connect
     void topologicalSortNodes();                                        // to make sure the processing order / graph is actually correct
 
-    vector<float> levels;
+    
 
     bool audio_engine_on;
 

@@ -3,106 +3,90 @@
 #include "MainHeader.h"
 #include <JuceHeader.h>
 #include "AudioNodes.h"
-#include <process.h>
 
 
-class DSPNode : public AudioNode
+class DSPNode: public AudioNode, public juce::AudioProcessor
 {
 public:
-
-    DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
-
-    double sampleRate = 48000;
-    int blockSize = BLOCKSIZE;
-    int numChannels = 2;
-
-    std::vector<juce::dsp::ProcessorBase*> chain;
-
 
     juce::AudioBuffer<float> inputBuffer;
     juce::AudioBuffer<float> outputBuffer;
 
+    DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 
-    void prepare()
-    {
-        juce::dsp::ProcessSpec spec;
-        spec.sampleRate = sampleRate;
-        spec.maximumBlockSize = blockSize;
-        spec.numChannels = numChannels;
+    //================ AudioProcessor ====================
 
-
-
-        fastdsp.setMix(1.0f);
-        fastdsp.setDepth(1.0f);
-        fastdsp.setRate(5.0f);
-
-        fastdsp.prepare(spec);
-
-
-        for (auto& p : chain)
-            p->prepare(spec);
-
-
-    }
-
-    void reset()
-    {
-        for (auto& p : chain)
-            p->reset();
-    }
-
-
-    juce::dsp::Phaser<float> fastdsp;
-
-
-    void process()
-    {
+    void process() {
         outputBuffer.makeCopyOf(inputBuffer, false);    // output buf is the process context
-
-        juce::dsp::AudioBlock<float> block(outputBuffer);
-        juce::dsp::ProcessContextReplacing<float> ctx(block);
-
-        
-
-       // fastdsp.coefficients = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 200.0f);
-
-        fastdsp.process(ctx);
-
-       // for (auto& p : chain)
-       //     p->process(ctx);
+        juce::MidiBuffer empt;                  // function needs it RIP
+        processBlock(outputBuffer, empt);
     }
 
-    void clear()
+    void prepareToPlay(double sampleRate, int blockSize) override
     {
-        chain.clear();
+        juce::dsp::ProcessSpec spec{
+            sampleRate,
+            static_cast<int>(blockSize),
+            static_cast<int>(numOutputs)
+        };
+
+        prepareDSP(spec);
     }
 
-    void addEffect(EffectType effect)
+    void processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer&) override
     {
+        juce::dsp::AudioBlock<float> block(buffer);
 
-        auto derivedPtr = new juce::dsp::Chorus<float>;
-      //  derivedPtr->setDepth(0.5f);
-     //   derivedPtr->setMix(1.0f);
-     //   derivedPtr->setRate(1.0f);
-        juce::dsp::ProcessorBase* basePtr = (juce::dsp::ProcessorBase*)derivedPtr;  // vector now manages the pointer
-        chain.push_back(basePtr);           
-
-
-        switch (effect)
-        {
-        case EffectType::Filter:
-            break;
-        case EffectType::Phaser:
-            break;
-        case EffectType::Gain:
-            break;
-        default:
-            break;
+        if (!bypassed) {
+            processDSP(block);
+        } else {
+            outputBuffer.makeCopyOf(inputBuffer, false);
         }
 
-                       // chain.push_back(std::make_unique<ProcessorType>());
-        prepare();     // reinitialize entire chain for safety
+        
     }
+
+    // ================ Configuration =====================
+    const juce::String getName() const override { return "Device Node"; }
+
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override
+    {
+        return layouts.getMainInputChannelSet().size() == numInputs &&
+            layouts.getMainOutputChannelSet().size() == numOutputs;
+    }
+
+
+    int numInputs = 2;
+    int numOutputs = 2;
+    bool bypassed = false;
+
+
+private:
+    //================ Boilerplate =======================
+    bool hasEditor() const override { return false; }
+    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
+    void releaseResources() override {}
+    double getTailLengthSeconds() const override { return 0.0; }
+    bool acceptsMidi() const override { return false; }
+    bool producesMidi() const override { return false; }
+    bool isMidiEffect() const override { return false; }
+
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram(int) override {}
+    const juce::String getProgramName(int) override { return {}; }
+    void changeProgramName(int, const juce::String&) override {}
+
+    void getStateInformation(juce::MemoryBlock&) override {}
+    void setStateInformation(const void*, int) override {}
+
+protected:
+    //=========== IMPLEMENTED BY SPECIFIC DSP EFFECTS ===========
+
+    virtual void prepareDSP(const juce::dsp::ProcessSpec&) = 0;
+    virtual void processDSP(juce::dsp::AudioBlock<float>&) = 0;
+
+
 };
 
 #endif

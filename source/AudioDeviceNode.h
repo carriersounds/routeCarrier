@@ -68,8 +68,7 @@ public:
     // === Members ===
 
 
-    double sampleRate = 48000.0;
-    int blockSize = 512;
+   
 
     std::atomic<float> gainValue = 0.0f;
     std::atomic<float> currentLevel = 0.0f;
@@ -79,7 +78,7 @@ public:
 
     juce::AbstractFifo hardwareFIFO;    // for hardware inputs to write to and for hardware outputs to RECEIVE data from  
     juce::AudioBuffer<float> data;
-    int numChannels;
+
 private:
    
     bool m_isMainOutput;

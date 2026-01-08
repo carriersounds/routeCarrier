@@ -116,6 +116,7 @@
       <AdditionalIncludeDirectories>source\JuceLibraryCode;A:\Documents\Tech Projects\Code &amp; Software\Libraries\JUCE\modules;A:\Documents\Tech Projects\Code &amp; Software\Libraries\imgui-node-editor;source\imgui</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -136,6 +137,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -150,6 +152,7 @@
     <ClCompile Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor.cpp" />
     <ClCompile Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor_api.cpp" />
     <ClCompile Include="source\AudioDeviceNode.cpp" />
+    <ClCompile Include="source\AudioEffects.cpp" />
     <ClCompile Include="source\AudioEngine.cpp" />
     <ClCompile Include="source\AudioNodes.cpp" />
     <ClCompile Include="source\FileIO.cpp" />
@@ -167,11 +170,17 @@
     <ClCompile Include="source\JuceLibraryCode\include_juce_audio_basics.cpp" />
     <ClCompile Include="source\JuceLibraryCode\include_juce_audio_devices.cpp" />
     <ClCompile Include="source\JuceLibraryCode\include_juce_audio_formats.cpp" />
+    <ClCompile Include="source\JuceLibraryCode\include_juce_audio_processors.cpp" />
     <ClCompile Include="source\JuceLibraryCode\include_juce_core.cpp" />
     <ClCompile Include="source\JuceLibraryCode\include_juce_core_CompilationTime.cpp" />
     <ClCompile Include="source\JuceLibraryCode\include_juce_data_structures.cpp" />
     <ClCompile Include="source\JuceLibraryCode\include_juce_dsp.cpp" />
     <ClCompile Include="source\JuceLibraryCode\include_juce_events.cpp" />
+    <ClCompile Include="source\JuceLibraryCode\include_juce_graphics.cpp" />
+    <ClCompile Include="source\JuceLibraryCode\include_juce_graphics_Harfbuzz.cpp" />
+    <ClCompile Include="source\JuceLibraryCode\include_juce_graphics_Sheenbidi.c" />
+    <ClCompile Include="source\JuceLibraryCode\include_juce_gui_basics.cpp" />
+    <ClCompile Include="source\JuceLibraryCode\include_juce_gui_extra.cpp" />
     <ClCompile Include="source\Logger.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\Program.cpp" />
@@ -185,6 +194,7 @@
     <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor.h" />
     <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor_internal.h" />
     <ClInclude Include="source\AudioDeviceNode.h" />
+    <ClInclude Include="source\AudioEffects.h" />
     <ClInclude Include="source\AudioEngine.h" />
     <ClInclude Include="source\AudioNodes.h" />
     <ClInclude Include="source\FileIO.h" />

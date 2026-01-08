@@ -3,7 +3,6 @@
 
 DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID)
         : hardwareFIFO(FIFOSIZE), 
-        numChannels(2), 
         m_isMainOutput(false), 
         data(2, FIFOSIZE),
         AudioNode(blocktype,initDeviceName,nodeID)
@@ -185,7 +184,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
                 samplesWritten = writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), numSamples);
                 
                 if (samplesWritten > numSamples) {
-                    Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+         //           Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
                 }
                 return;
             }
@@ -193,10 +192,10 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
             
             if (samplesWritten > numSamples) {
-                Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+     //           Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
             }
         } else {
-            Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
+//            Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
         }
     }
 
@@ -206,7 +205,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         int samplesRead = readFromFifoTo(outputChannelData, numSamples);
         if (samplesRead < numSamples)
         {
-            Logger::log("UNDERRUN IN OUTPUT: SamplesRead(" + to_string(samplesRead) + ") < numSamples(" + to_string(numSamples) + ")");
+   //         Logger::log("UNDERRUN IN OUTPUT: SamplesRead(" + to_string(samplesRead) + ") < numSamples(" + to_string(numSamples) + ")");
 
             // Underrun → zero remaining output
             for (int ch = 0; ch < numOutputChannels; ++ch)      // only triggered once i believe, at the start?
@@ -236,7 +235,6 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
    
 
 }
-
 
 void DeviceNode::setAsMainOutput(juce::WaitableEvent* trigger) {
 

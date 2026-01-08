@@ -17,9 +17,9 @@ public:
 	PinID inputPin;
 	PinID outputPin;
 	
-	// double sampleRate = 48000;
-	// int blockSize = BLOCKSIZE;
-	// int numChannels = 2;
+	double sampleRate = 48000;
+	int blockSize = BLOCKSIZE;
+	int numChannels = 2;
 
 
 
@@ -35,7 +35,7 @@ public:
 		return pinType::null;
 	}
 	BlockType getBlockType() const { return m_blockType; }
-	string getName() const { return Name.toStdString(); }
+	string getBlockName() const { return Name.toStdString(); }
 };
 
 

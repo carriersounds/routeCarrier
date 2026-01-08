@@ -738,7 +738,7 @@ void GUI::renderGraph() {
     ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
 
     if (ImGui::SliderFloat("sleep in main Thread", &sleeperMicroseconds, 1, 200, "%.1f us")) {
-        prog->audio.microSleep = sleeperMicroseconds;
+      //  prog->audio.microSleep = sleeperMicroseconds;
     }
 
 

@@ -143,13 +143,12 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
     sampleRate = device->getCurrentSampleRate();
     blockSize = device->getCurrentBufferSizeSamples();
 
-    Logger::log("AboutToStart: " + device->getName().toStdString());
+    Logger::log("Device About To Start: " + device->getName().toStdString());
 
-    Logger::log("Actual SampleRate = " + to_string(device->getCurrentSampleRate()));
-    Logger::log("Actual BlockSize = " + to_string(device->getCurrentBufferSizeSamples()));
+    Logger::log("SampleRate = " + to_string(device->getCurrentSampleRate()));
+    Logger::log("BlockSize = " + to_string(device->getCurrentBufferSizeSamples()));
 
-
-    // Prepare DSP
+    // Prepare
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = blockSize;
@@ -163,44 +162,31 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
                                                   float* const* outputChannelData, int numOutputChannels, 
                                                   int numSamples, const juce::AudioIODeviceCallbackContext&) {
 
-    // switch deviceNodeType {
-    // process ()5
-    // if (includesProcessing) {
-
     if (m_blockType == BlockType::InputDevice) {
 
-        // Drift mitigation: avoid FIFO runaway
+
         const int fifoFill = hardwareFIFO.getNumReady();
-        const int fifoCapacity = hardwareFIFO.getTotalSize();
-
-        // Simple soft ceiling: drop input if FIFO is too full
-        const bool fifoTooFull = fifoFill > (fifoCapacity * 3) / 4;
-
-        // Input overflow → intentionally drop this block
-        // This protects output timing stability
-
-        int samplesWritten = 0;
+        const int fifoCapacity = hardwareFIFO.getTotalSize();               // Drift mitigation: avoid FIFO runaway
+        const bool fifoTooFull = fifoFill > (fifoCapacity * 3) / 4;         // Simple soft ceiling: drop input if FIFO is too full
+        int samplesWritten = 0;                                             // Input overflow → intentionally drop this block
+                                                                            // This protects output timing stability
 
         if (!fifoTooFull)
         {
             const float* data = this->data.getWritePointer(0);
 
-            // SRC
+            // SRC, not working currently
             if (0 && sampleRate < 47900) {
 
                 juce::AudioBuffer<float> SRCbuf(1, BLOCKSIZE);
                 juce::LagrangeInterpolator interpolator;
                 double ratio = deviceManager.getAudioDeviceSetup().sampleRate / 48000;
-
-
                 interpolator.process(ratio, inputChannelData[1], SRCbuf.getWritePointer(0), BLOCKSIZE);
-
                 samplesWritten = writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), numSamples);
                 
                 if (samplesWritten > numSamples) {
                     Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
                 }
-
                 return;
             }
 
@@ -209,9 +195,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             if (samplesWritten > numSamples) {
                 Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
             }
-
-        }
-        else {
+        } else {
             Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
         }
     }
@@ -219,12 +203,9 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
     if (m_blockType == BlockType::OutputDevice) {
 
         const float* data = this->data.getReadPointer(0);
-
         int samplesRead = readFromFifoTo(outputChannelData, numSamples);
-
         if (samplesRead < numSamples)
         {
-
             Logger::log("UNDERRUN IN OUTPUT: SamplesRead(" + to_string(samplesRead) + ") < numSamples(" + to_string(numSamples) + ")");
 
             // Underrun → zero remaining output
@@ -238,7 +219,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
 
        if(isMainOutput() && hardwareFIFO.getNumReady() < BLOCKSIZE)
         trigger->signal();                                                  // trigger engine that the output fifo is getting empty! needs a refill 
-       //fifo should be filled within 1 output sample period
+       // fifo should be filled within 1 output sample period
 
     }
 
@@ -261,9 +242,6 @@ void DeviceNode::setAsMainOutput(juce::WaitableEvent* trigger) {
 
     m_isMainOutput = true;
     this->trigger = trigger;
-
-
-    // maybe reconfigure buffers or something idk
 }
 
 float DeviceNode::getLevel() const noexcept {

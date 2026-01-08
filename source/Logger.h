@@ -87,7 +87,7 @@ private:
         LogSource source;
         std::string SentenceBuilder() const
         {
-            return (std::string)(time + "[" + LevelName(level) + "] [" + SourceName(source) + "] : " + message + "\n");
+            return (std::string)(time + "[" + LevelName(level) + "] : " + message + "\n"); // [" + SourceName(source) + "]
         }
     };
     std::queue<std::string> messageQueue;

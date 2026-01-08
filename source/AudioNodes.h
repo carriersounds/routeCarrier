@@ -4,9 +4,7 @@
 #include <JuceHeader.h>
 
 
-
-// base class
-
+// base class for any node in the network
 class AudioNode {
 public:
 
@@ -19,6 +17,11 @@ public:
 	PinID inputPin;
 	PinID outputPin;
 	
+	// double sampleRate = 48000;
+	// int blockSize = BLOCKSIZE;
+	// int numChannels = 2;
+
+
 
 	void addPin(PinID pinID, pinType type) { 
 		
@@ -26,7 +29,6 @@ public:
 		if (type == pinType::output) outputPin = pinID;
 	
 	}
-
 	pinType hasPin(PinID pinID) const {
 		if (inputPin == pinID) return pinType::input;
 		if (outputPin == pinID) return pinType::output;
@@ -35,17 +37,6 @@ public:
 	BlockType getBlockType() const { return m_blockType; }
 	string getName() const { return Name.toStdString(); }
 };
-
-
-	// right click node: options
-	// right-click pin: options?
-	// right-click links: options?
-	// 
-	// if (is hw device block) select (i/o) device (default = null) 
-	// 
-	// monitor input or output (show waveform on graph)
-	// delete / disconnect
-	// set as main output
 
 
 #endif

@@ -64,8 +64,6 @@ Node Features:
 */
 
 
-
-
 class AudioEngine {
 public:
     AudioEngine(Program* prog);
@@ -79,8 +77,8 @@ public:
     
     // Identifiers
     DeviceNode nullDevice;                                      // no input, no output, just for namecheck
-    std::map<NodeID, unique_ptr<DeviceNode>> deviceNodes;    // node ID, which contains pins   
-    std::map<NodeID, unique_ptr<DSPNode>> DSPNodes;
+    std::map<NodeID, unique_ptr<DeviceNode>> deviceNodes;       // node ID, which contains pins   
+    std::map<NodeID, unique_ptr<DSPNode>> DSPNodes;             // node ID, which contains pins   
     std::map<LinkID,BlockLink> links;                           // link ID + pins
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
     std::map<NodeID, juce::AudioBuffer<float>> inputBuffers;

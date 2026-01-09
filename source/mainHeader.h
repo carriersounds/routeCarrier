@@ -67,12 +67,21 @@ typedef size_t NodeID;
 typedef size_t PinID;
 typedef size_t LinkID;
 typedef size_t BaseID;
+typedef size_t ParamID;
 
 using std::unique_ptr;
 using std::shared_ptr;
 using std::make_shared;
 
+
+enum class ParamType {
+    Integer,
+    Float,
+    Bool
+};
+
 enum class EffectType {
+    None,
     Filter,
     Phaser,
     Gain
@@ -106,7 +115,6 @@ enum class BlockType {
     DSP,
     FileInput
 };
-
 
 enum class blockModifier {
     addNew,

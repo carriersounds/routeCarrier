@@ -7,13 +7,16 @@
 #include "AudioDSPNode.h"
 #include "AudioNodes.h"
 #include "AudioEffects.h"
+#include "AudioVisualizerNode.h"
 
 class Program;
 
 /*
 TODO:
 
+
 + make sure mixing into output actually works... now only the last copy is valid
+- BUG: multiple outputs will still drift -> small crackling will build up
 - Actual sample rate conversion
 - Handle node order, topological sort
 - this means re-work the loop in the main run() function for links
@@ -82,7 +85,7 @@ public:
 
     // Node management
     NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName);          // choose input or output, returns next ID
-    NodeID addNewDSPNode(const juce::String& NodeName);                                 // effects = enum in function input, return is for GUI i think?   
+    NodeID addNewDSPNode(EffectType typeOfEffect);                                 // effects = enum in function input, return is for GUI i think?   
     void deleteDeviceNode(NodeID deviceID);
     void deleteDSPNode(NodeID blockID);
     void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput);   

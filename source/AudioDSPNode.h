@@ -5,6 +5,27 @@
 #include "AudioNodes.h"
 
 
+struct IDSPParameter
+{
+    virtual ~IDSPParameter() = default;
+};
+
+template <typename T>
+struct DSPParameter : IDSPParameter
+{
+    DSPParameter(NodeID parent, std::string name, T initial)
+        : parentNode(parent), paramName(std::move(name)), value(initial)
+    {
+
+    }
+
+    NodeID parentNode;
+    std::string paramName;
+    std::atomic<T> value;
+};
+
+
+
 class DSPNode: public AudioNode, public juce::AudioProcessor
 {
 public:
@@ -15,51 +36,20 @@ public:
     DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 
     //================ AudioProcessor ====================
-
-    void process() {
-        outputBuffer.makeCopyOf(inputBuffer, false);    // output buf is the process context
-        juce::MidiBuffer empt;                  // function needs it RIP
-        processBlock(outputBuffer, empt);
-    }
-
-    void prepareToPlay(double sampleRate, int blockSize) override
-    {
-        juce::dsp::ProcessSpec spec{
-            sampleRate,
-            static_cast<int>(blockSize),
-            static_cast<int>(numOutputs)
-        };
-
-        prepareDSP(spec);
-    }
-
-    void processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer&) override
-    {
-        juce::dsp::AudioBlock<float> block(buffer);
-
-     //   if (!bypassed) {
-            processDSP(block);
-       // } else {
-       //     outputBuffer.makeCopyOf(inputBuffer, false);
-      //  }
-
-        
-    }
+    void process();
+    void prepareToPlay(double sampleRate, int blockSize) override;
+    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override; 
 
     // ================ Configuration =====================
-    const juce::String getName() const override { return "Device Node"; }
 
-    bool isBusesLayoutSupported(const BusesLayout& layouts) const override
-    {
-        return layouts.getMainInputChannelSet().size() == numInputs &&
-            layouts.getMainOutputChannelSet().size() == numOutputs;
-    }
+    virtual EffectType getType() = 0;                                       // used by GUI for parameter management
 
+    const juce::String getName() const override { return "DSP Node"; }
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
 
     int numInputs = 2;
     int numOutputs = 2;
     bool bypassed = false;
-
 
 private:
     //================ Boilerplate =======================
@@ -82,10 +72,9 @@ private:
 
 protected:
     //=========== IMPLEMENTED BY SPECIFIC DSP EFFECTS ===========
-
+    // 
     virtual void prepareDSP(const juce::dsp::ProcessSpec&) = 0;
     virtual void processDSP(juce::dsp::AudioBlock<float>&) = 0;
-
 
 };
 

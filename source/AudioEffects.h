@@ -7,56 +7,49 @@
 
 // channel strip
 
-
 class LowpassNode final : public DSPNode
-    {
-    public:
-        LowpassNode(BlockType blocktype,juce::String initDeviceName,NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID){
-            *filter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, 200);
-        }
+{
+public:
+    LowpassNode(BlockType blocktype,juce::String initDeviceName,NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID){
 
-    protected:
-        void prepareDSP(const juce::dsp::ProcessSpec& spec) override{
-            filter.reset();
-            filter.prepare(spec);
-        }
+        cutoffHz.store(200.0f);
+        resonance.store(0.7f);
+        *filter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, cutoffHz.load());
+    }
 
-        void processDSP(juce::dsp::AudioBlock<float>& block) override{
-            filter.process(juce::dsp::ProcessContextReplacing<float>(block));
-        }
+    // ===== Parameters =====
+    std::atomic<float> cutoffHz{ 200.0f };
+    std::atomic<float> resonance{ 0.7f };
+protected: 
+    EffectType getType() { return EffectType::Filter; }
+    void prepareDSP(const juce::dsp::ProcessSpec& spec) override{filter.reset(); filter.prepare(spec);}
+    void processDSP(juce::dsp::AudioBlock<float>& block) override;
 
-    private:
-        using Filter = juce::dsp::IIR::Filter<float>;
-        using Coeffs = juce::dsp::IIR::Coefficients<float>;
-        juce::dsp::ProcessorDuplicator<Filter, Coeffs> filter;
-    };
+    
+private:
+    using Filter = juce::dsp::IIR::Filter<float>;
+    using Coeffs = juce::dsp::IIR::Coefficients<float>;
+    juce::dsp::ProcessorDuplicator<Filter, Coeffs> filter;
+
+};
 
 
 class GainNode final : public DSPNode
 {
 public:
-    GainNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID) {
-        gain.setGainLinear(0.2f);
+    GainNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID), gainValueDB(0.0f) {
+        gain.setGainDecibels(gainValueDB);
     }
 
+    std::atomic<float> gainValueDB;
 protected:
-    void prepareDSP(const juce::dsp::ProcessSpec& spec) override{
-        gain.reset();
-        gain.prepare(spec);
-    }
-
-    void processDSP(juce::dsp::AudioBlock<float>& block) override{
-        gain.process(juce::dsp::ProcessContextReplacing<float>(block));
-    }
+    
+    EffectType getType() { return EffectType::Gain; }
+    void prepareDSP(const juce::dsp::ProcessSpec& spec) override{gain.reset();gain.prepare(spec);}
+    void processDSP(juce::dsp::AudioBlock<float>& block) override;
 
 private:
     juce::dsp::Gain<float> gain;
 };
-
-
-
-
-
-
 
 #endif

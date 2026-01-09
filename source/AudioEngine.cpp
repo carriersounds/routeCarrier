@@ -30,10 +30,8 @@ void AudioEngine::run() {
         tickCounter++;
   
        // Logger::log(threadTimer.getDurationLoopString() + " for all processing");
-        
+           
         requestNewAudioBlock.wait();                                        // wait for main output fifo to empty below BLOCKSIZE
-
-       // Logger::log(threadTimer.getDurationLoopString() + " waited");     // wait ~10 ms, processing  = ~20-30 us
 
         // 1. READ all input fifo's  once
         for (auto& device : deviceNodes) {     
@@ -47,13 +45,13 @@ void AudioEngine::run() {
         // 3. flush output buffers
         for (auto& buf : outputBuffers) buf.second.clear();
                          
-        // 4. clear DSP buffers as well
+        // 4. clear DSP buffers
         for (auto& DSPblock : DSPNodes) {          
             DSPblock.second->outputBuffer.clear();  
             DSPblock.second->inputBuffer.clear();
         }
 
-        // 5. link audio nodes and transfer audio
+        // 5. check links and transfer audio
         for (auto& link : links) {
 
             NodeID nodeLeftOfLink = m_PinNodePairs.at(link.second.ID_left.Get());
@@ -74,7 +72,7 @@ void AudioEngine::run() {
 
 
             // DSP output
-            if (DSPNodes.contains(nodeLeftOfLink)){
+            if (DSPNodes.contains(nodeLeftOfLink) && DSPNodes[nodeLeftOfLink]->sampleRate > 5000.0){
                 DSPNodes[nodeLeftOfLink]->process();
                 currentLinkInput = &DSPNodes[nodeLeftOfLink]->outputBuffer;    // output, since you can only read from a DSP output pin
             }
@@ -146,7 +144,7 @@ BaseID AudioEngine::getNewID(Identifier type) {
     if (type == Identifier::node) idtype = "node";
     if (type == Identifier::pin)  idtype = "pin";
 
-     Logger::log("new " + idtype +" ID: " + to_string(uniqueID), level_DEBUG);
+   //  Logger::log("new " + idtype +" ID: " + to_string(uniqueID), level_DEBUG);
 
     return uniqueID;
 }
@@ -192,15 +190,23 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     return blockID;
 }
 
-NodeID AudioEngine::addNewDSPNode(const juce::String& name) {
-
-    // change graph structure
+NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
 
     NodeID blockID = getNewID(Identifier::node);                                        // get new IDs for node and pins
     PinID inputPinID = getNewID(Identifier::pin);
     PinID outputPinID = getNewID(Identifier::pin);
 
-    DSPNodes.emplace(blockID, std::make_unique<LowpassNode>(BlockType::DSP, name, blockID));      // create new DSPNode
+    switch (typeOfEffect)
+    {
+    case EffectType::Filter:
+        DSPNodes.emplace(blockID, std::make_unique<LowpassNode>(BlockType::DSP, "Filter", blockID));
+        break;
+    case EffectType::Gain:
+        DSPNodes.emplace(blockID, std::make_unique<GainNode>(BlockType::DSP, "Gain", blockID));
+        break;
+    default:
+        break;
+    }   
     
     DSPNodes.at(blockID)->prepareToPlay(48000, BLOCKSIZE);                             // initialize samplerates   
     DSPNodes.at(blockID)->addPin(inputPinID, pinType::input);                             // assign pins

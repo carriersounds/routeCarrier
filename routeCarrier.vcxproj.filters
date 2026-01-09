@@ -137,6 +137,9 @@
     <ClCompile Include="source\AudioEffects.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\AudioVisualizerNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\GUI.h">
@@ -218,6 +221,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="source\AudioEffects.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioVisualizerNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

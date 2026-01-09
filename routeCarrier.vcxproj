@@ -155,6 +155,7 @@
     <ClCompile Include="source\AudioEffects.cpp" />
     <ClCompile Include="source\AudioEngine.cpp" />
     <ClCompile Include="source\AudioNodes.cpp" />
+    <ClCompile Include="source\AudioVisualizerNode.cpp" />
     <ClCompile Include="source\FileIO.cpp" />
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\imgui\imgui.cpp" />
@@ -197,6 +198,7 @@
     <ClInclude Include="source\AudioEffects.h" />
     <ClInclude Include="source\AudioEngine.h" />
     <ClInclude Include="source\AudioNodes.h" />
+    <ClInclude Include="source\AudioVisualizerNode.h" />
     <ClInclude Include="source\FileIO.h" />
     <ClInclude Include="source\GUI.h" />
     <ClInclude Include="source\imgui\imconfig.h" />

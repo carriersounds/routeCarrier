@@ -1,9 +1,7 @@
 #include "Program.h"
 
 int main() {
- 
     juce::initialiseJuce_GUI();
-
     {
         // Launch Program
         Program prog;

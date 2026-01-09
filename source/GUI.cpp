@@ -1,5 +1,7 @@
 #include "GUI.h"
 #include "Program.h"
+#include "AudioEffects.h"
+#include "AudioDSPNode.h"
 
 #define tRight ImGui::TableNextColumn()
 #define tDown ImGui::TableNextRow()
@@ -309,10 +311,10 @@ void GUI::renderMenuBar() {
         
         if (ImGui::BeginMenu("Audio")) {
 
-               if(ImGui::MenuItem("ADD EFFECT BLOCK"))  prog->audio.addNewDSPNode("TEST EFFECT");           
+              
 
                 ImGui::EndMenu();
-            }
+        }
         
         if (ImGui::BeginMenu("View")) {
             
@@ -435,17 +437,11 @@ void GUI::renderLog()
 void GUI::renderToolbar() {
 
     ImGui::Begin("Toolbar");
+  
+    ImGui::Text("Add Effect");
 
-    ImVec2 size = ImGui::GetWindowSize();
-    const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-    ImRect bb(cursorPos, cursorPos + size);
-    drawGradientBackground(ImGui::GetWindowDrawList(), "Toolbar", bb, 0, 0, 0);
-
-
-    ImGui::TextWrapped("alle inputs en outputs in een mooie table krijgen\ndat je ze kan drag&droppen naar een node toe als begin/eindpunt.\nook dat je met dat drag&drop simpele DSP kan gooien op een signal chain");
-    // met text sorteren op virtual in/output of fysieke (laat handmatig sorteren actually). all
-    // 
-// put some MF ICONS BRUH
+    if (ImGui::Button("+ FILTER",{180,80}))  prog->audio.addNewDSPNode(EffectType::Filter);
+    if (ImGui::Button("+ GAIN", { 180,80 }))  prog->audio.addNewDSPNode(EffectType::Gain);
 
     ImGui::End();
 
@@ -453,149 +449,170 @@ void GUI::renderToolbar() {
 
 void GUI::renderMixPanel() {
 
+    static constexpr float pinSize = 12.0f;
+    static constexpr float spacing = 4.0f;
+    static constexpr float NODE_WIDTH = 180.0f;
+    static constexpr float ROW_SPACING = 6.0f;
+
     ImGui::Begin("Mixing Panel", &showMixer, ImGuiWindowFlags_NoNavInputs);
 
     node::SetCurrentEditor(node_Context);
     node::Begin("editore", ImVec2(0.0, 0.0f));
 
-    static float pinSize = 12.0f;
-    static float spacing = 4.0f;
+
 
     // Draw input Nodes
     for (auto& inputDevice : prog->audio.deviceNodes) {
 
-            if (!inputDevice.second->isInput()) continue;
+         if (!inputDevice.second->isInput()) continue;
 
-            node::BeginNode(inputDevice.first);
-            ImGui::Text(inputDevice.second->getBlockName().c_str());
+         // ============== TITLE ==============
+         node::BeginNode(inputDevice.first);
+         ImGui::Text(inputDevice.second->getBlockName().c_str());
+         ImVec2 p = ImGui::GetCursorScreenPos();
+         float w = node::GetNodeSize(inputDevice.first).x - pinSize - spacing - spacing;
+         ImGui::GetWindowDrawList()->AddLine(p,ImVec2(p.x + w, p.y),IM_COL32(120, 120, 120, 255));
+         ImGui::Dummy(ImVec2(0, 6));
+         ImGui::NewLine();
+     
+          // ============== OUTPUT PIN ==============        
+         const char* labelout = "FROM DEVICE        ";
+         ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
 
-            // Custom divider 
-            ImVec2 p = ImGui::GetCursorScreenPos();
-            float w = node::GetNodeSize(inputDevice.first).x - pinSize - spacing - spacing;
-            ImGui::GetWindowDrawList()->AddLine(
-                p,
-                ImVec2(p.x + w, p.y),
-                IM_COL32(120, 120, 120, 255)
-            );
-            ImGui::Dummy(ImVec2(0, 6)); // spacing after divider
-            ImGui::NewLine();
-
-
-            // PIN         
-            const char* label = "From input  > ";
-            ImVec2 textSize = ImGui::CalcTextSize(label);
-            float avail = node::GetNodeSize(inputDevice.first).x - spacing;
-            // Move cursor to the right edge
-            ImGui::SetCursorPosX(
-                ImGui::GetCursorPosX() + avail - textSize.x - (2 * (pinSize + spacing))
-            );
-
-            node::BeginPin(inputDevice.second->outputPin, ed::PinKind::Output);  // create N input pins
-            ImGui::TextUnformatted(label);
-            ImGui::SameLine();
-            // Pin icon
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            dl->AddCircleFilled(
-                ImVec2(pos.x, pos.y + textSize.y * 0.5f),
-                textSize.y * 0.5f,
-                IM_COL32(200, 200, 200, 255)
-            );
-            node::EndPin();
-            node::EndNode();
-
-
-
-        }
+         // Move cursor to the right edge,
+         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + spacing + w - (textSizeOut.x) ); // to counter the 2 spacings for W
+         node::BeginPin(inputDevice.second->outputPin, ed::PinKind::Output);
+         ImGui::TextUnformatted(labelout);
+         ImGui::SameLine();
+         
+         // Pin icon
+         ImDrawList* dlo = ImGui::GetWindowDrawList();   
+         ImVec2 poso = ImGui::GetCursorScreenPos();
+         poso.x = poso.x - textSizeOut.y - spacing;      // textSizeOut.y = circle width(spacing)
+         dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f),textSizeOut.y * 0.5f,IM_COL32(250, 150, 30, 255));
+         node::EndPin();
+         node::EndNode();
+    }
 
     // Draw output Nodes
     for (auto& outputDevice : prog->audio.deviceNodes) {
 
-            if (!outputDevice.second->isOutput()) continue;
+        if (!outputDevice.second->isOutput()) continue;
 
-            node::BeginNode(outputDevice.first);
-            ImGui::Text(outputDevice.second->getBlockName().c_str());
+        // ============== TITLE ==============
+        node::BeginNode(outputDevice.first);
+        ImGui::Text(outputDevice.second->getBlockName().c_str());
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        float w = node::GetNodeSize(outputDevice.first).x - pinSize - spacing - spacing;
+        ImGui::GetWindowDrawList()->AddLine(p,ImVec2(p.x + w, p.y),IM_COL32(120, 120, 120, 255));
+        ImGui::Dummy(ImVec2(0, 6)); // spacing after divider
+        ImGui::NewLine();
 
-
-            // Custom divider 
-            ImVec2 p = ImGui::GetCursorScreenPos();
-            float w = node::GetNodeSize(outputDevice.first).x - pinSize - spacing - spacing;
-            ImGui::GetWindowDrawList()->AddLine(
-                p,
-                ImVec2(p.x + w, p.y),
-                IM_COL32(120, 120, 120, 255)
-            );
-            ImGui::Dummy(ImVec2(0, 6)); // spacing after divider
-            ImGui::NewLine();
-
-            // PIN     
-            const char* label = "   >  To Output";
-            ImVec2 textSize = ImGui::CalcTextSize(label);
-            node::BeginPin(outputDevice.second->inputPin, ed::PinKind::Input);  // create N input pins             
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + spacing * 2);
-
-            // Pin icon
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            dl->AddCircleFilled(
-                ImVec2(pos.x, pos.y + textSize.y * 0.5f),
-                textSize.y * 0.5f,
-                IM_COL32(200, 200, 200, 255)
-            );
-
-            ImGui::TextUnformatted(label);
-            node::EndPin();
-            node::EndNode();
-        }
+        // ============== INPUT PIN ==============
+        const char* labelin = "    TO DEVICE";
+        ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
+        node::BeginPin(outputDevice.second->inputPin, ed::PinKind::Input);          
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 2 * spacing);
+        
+        // Pin icon  
+        ImDrawList* dli = ImGui::GetWindowDrawList();  
+        ImVec2 posi = ImGui::GetCursorScreenPos();
+        dli->AddCircleFilled(ImVec2(posi.x, posi.y + textSizeIn.y * 0.5f),textSizeIn.y * 0.5f,IM_COL32(30, 150, 230, 255));
+        ImGui::TextUnformatted(labelin);
+        node::EndPin();
+        node::EndNode();
+    }
 
     // Draw DSP Nodes
     for (auto& effectBlock : prog->audio.DSPNodes) {
 
-            node::BeginNode(effectBlock.first);
-            ImGui::Text(effectBlock.second->getBlockName().c_str());
 
-            // Custom divider 
-            ImVec2 p = ImGui::GetCursorScreenPos();
-            float w = node::GetNodeSize(effectBlock.first).x - pinSize - spacing - spacing;
-            ImGui::GetWindowDrawList()->AddLine(
-                p,
-                ImVec2(p.x + w, p.y),
-                IM_COL32(120, 120, 120, 255)
-            );
-            ImGui::Dummy(ImVec2(0, 6)); // spacing after divider
-            ImGui::NewLine();
+        // ============== TITLE ==============
+         node::BeginNode(effectBlock.first);
+         ImGui::Text(effectBlock.second->getBlockName().c_str());
+         ImVec2 p = ImGui::GetCursorScreenPos();
+         float w = node::GetNodeSize(effectBlock.first).x - pinSize - spacing - spacing;
+         ImGui::GetWindowDrawList()->AddLine(p,ImVec2(p.x + w, p.y),IM_COL32(120, 120, 120, 255));
+         ImGui::Dummy(ImVec2(0, 6)); 
 
-            // INPUT PIN
-            const char* labelin = "> IN";
-            ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
-            node::BeginPin(effectBlock.second->inputPin, ed::PinKind::Input);  // create N input pins             
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + spacing * 2);
+         // ============== PARAMETERS / EFFECT DEPENDENT --> FANCY GUI STUFF HERE ==============
+         ImGui::PushItemWidth(NODE_WIDTH - 40);
+         switch (effectBlock.second->getType())
+            {
+            case EffectType::Filter:
+            {
+                auto* FilterType = dynamic_cast<LowpassNode*>(effectBlock.second.get());
+                float cutoff = FilterType->cutoffHz.load(std::memory_order_relaxed);
 
-            ImGui::TextUnformatted(labelin);
-            node::EndPin();
+                ImGui::Text("Freq");
+                ImGui::SameLine(60);
+                if (ImGui::SliderFloat(string("##freq" + to_string(effectBlock.first)).c_str(), &cutoff, 20.0f, 20000.0f, "%.1f Hz", ImGuiSliderFlags_Logarithmic))
+                    FilterType->cutoffHz.store(cutoff);
 
-            // OUTPUT PIN         
-            const char* labelout = "OUT >";
-            ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
-            float avail = node::GetNodeSize(effectBlock.first).x - spacing;
+                ImGui::Dummy(ImVec2(0, ROW_SPACING));        
+    
+                ImGui::Text("Reso");
+                ImGui::SameLine(60);
+                float res = FilterType->resonance.load(std::memory_order_relaxed);
+                if (ImGui::SliderFloat(string("##reso" + to_string(effectBlock.first)).c_str(), &res, 0.1f, 10.0f))
+                    FilterType->resonance.store(res);
+            }
+            break;
+            case EffectType::Phaser:
+                break;
+            case EffectType::Gain: {
+                auto* GainType = dynamic_cast<GainNode*>(effectBlock.second.get());
+                float gainVal = GainType->gainValueDB.load(std::memory_order_relaxed);
 
-            // Move cursor to the right edge
-            ImGui::SetCursorPosX(
-                ImGui::GetCursorPosX() + avail - textSizeOut.x - (2 * (pinSize + spacing))
-            );
+                ImGui::Text("Gain");
+                ImGui::SameLine(60);
+                if (ImGui::SliderFloat(string("##dB" + to_string(effectBlock.first)).c_str(), &gainVal, -60.0f, 24.0f))
+                    GainType->gainValueDB.store(gainVal);
+            }
+            break;
+            default:
+                break;
+            }
+         ImGui::PopItemWidth();
+         ImGui::NewLine();
 
-            node::BeginPin(effectBlock.second->outputPin, ed::PinKind::Output);  // create N input pins
-            ImGui::TextUnformatted(labelout);
-            ImGui::SameLine();
+         // ============== INPUT PIN ==============
+         const char* labelin = "    IN";
+         ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
+         node::BeginPin(effectBlock.second->inputPin, ed::PinKind::Input);         
+         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 2*spacing);
+         
+         // Input Pin icon   
+         ImDrawList* dli = ImGui::GetWindowDrawList(); 
+         ImVec2 posi = ImGui::GetCursorScreenPos();
+         dli->AddCircleFilled(ImVec2(posi.x, posi.y + textSizeIn.y * 0.5f),textSizeIn.y * 0.5f, IM_COL32(30, 150, 230, 255));
+         ImGui::TextUnformatted(labelin);
+         node::EndPin();
 
-            node::EndPin();
-            node::EndNode();
-        }
+         // ============== OUTPUT PIN ==============        
+         const char* labelout = "OUT       ";
+         ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
+         ImGui::SameLine();
+         
+         // Move cursor to the right edge,
+         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + NODE_WIDTH - (textSizeOut.x + spacing));  
+         node::BeginPin(effectBlock.second->outputPin, ed::PinKind::Output);
+         ImGui::TextUnformatted(labelout);
+         ImGui::SameLine();
+         
+         // Output Pin icon
+         ImDrawList* dlo = ImGui::GetWindowDrawList();   
+         ImVec2 poso = ImGui::GetCursorScreenPos();
+         poso.x = poso.x - textSizeOut.y - spacing;      // textSizeOut.y = circle width(spacing)
+         dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f),textSizeOut.y * 0.5f, IM_COL32(250, 150, 30, 255));
+         node::EndPin();
+         node::EndNode();
+    }
 
     // Draw Links
     for (auto& link : prog->audio.links) {
-            node::Link(link.second.ID, link.second.ID_left, link.second.ID_right);
-        }
+         node::Link(link.second.ID, link.second.ID_left, link.second.ID_right);
+    }
 
     // Query link creation
     if (node::BeginCreate())                                            // GRAB PIN
@@ -648,10 +665,6 @@ void GUI::renderMixPanel() {
     node::SetCurrentEditor(nullptr);
 
     ImGui::End();
-    
-
-
-
 }
 
 void GUI::renderDeviceList() {
@@ -695,8 +708,6 @@ void GUI::renderDeviceList() {
 
 
         }
-
-
 
     }
 

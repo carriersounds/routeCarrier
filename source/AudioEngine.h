@@ -37,7 +37,7 @@ TODO:
 + delete input/output buffers when a device node gets deleted
 - make samplerate, blocksize and numchannels part of the base class. they all need it anyways. determined by engine params
 - BUG: sometimes when re-connecting nodes to new links, the audio doesn't pass. need to delete DSP block and create new one to solve...
-
+  ^^ probably due to link order in for(link : links)
 
 later: 
 - drag & drop DSP and device nodes

@@ -71,9 +71,7 @@ int GUI::imGuiSetup() {
 
     d11.setup(hwnd);        // Setup Platform/Renderer backends
 
-
     ImVec4* colors = style.Colors;
-
     colors[ImGuiCol_FrameBg] = ImVec4(0.10f, 0.37f, 0.16, 0.54f);
     colors[ImGuiCol_FrameBgHovered] = ImVec4(0.26f, 0.98f, 0.40f, 0.40f);
     colors[ImGuiCol_FrameBgActive] = ImVec4(0.26f, 0.98f, 0.42f, 0.67f);
@@ -437,12 +435,45 @@ void GUI::renderLog()
 void GUI::renderToolbar() {
 
     ImGui::Begin("Toolbar");
-  
-    ImGui::Text("Add Effect");
+ 
+    /*
+    Drag & Drop toolbar.
+    You can either press a Button to add it at a "default" position
+    Drag the Button onto the graph to place it at a specific location       
+    */
 
-    if (ImGui::Button("+ FILTER",{180,80}))  prog->audio.addNewDSPNode(EffectType::Filter);
-    if (ImGui::Button("+ GAIN", { 180,80 }))  prog->audio.addNewDSPNode(EffectType::Gain);
 
+    // big think over hoe ik device names vanaf hier naar de receiver ga krijgen
+
+    DragDropBlock dropper = DragDropBlock::None;
+
+
+
+    if(ImGui::Button("+ FILTER", { 180,80 }))prog->audio.addNewDSPNode(EffectType::Filter);
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+    {
+
+        dropper = DragDropBlock::Filter;
+
+        // triggers only on 1st button click
+        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+        ImGui::EndDragDropSource();
+
+    }
+
+    if(ImGui::Button("+ GAIN", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Gain);
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+    {
+
+        dropper = DragDropBlock::Gain;
+
+        // triggers only on 1st button click
+        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+        ImGui::EndDragDropSource();
+
+    }
+    
+   
     ImGui::End();
 
 }
@@ -456,9 +487,55 @@ void GUI::renderMixPanel() {
 
     ImGui::Begin("Mixing Panel", &showMixer, ImGuiWindowFlags_NoNavInputs);
 
+    bool isHovered = false;
+
     node::SetCurrentEditor(node_Context);
     node::Begin("editore", ImVec2(0.0, 0.0f));
 
+    // Handle node input from drag & drop
+
+    if (ImGui::BeginDragDropTarget())   // triggers every frame when hovered
+    {
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_DEMO_CELL");
+        
+        if (payload)
+        {
+            NodeID nodeToGiveInitPosition = 0;
+            IM_ASSERT(payload->DataSize == sizeof(DragDropBlock));
+            DragDropBlock dragPayload = *(const DragDropBlock*)payload->Data;
+
+            switch (dragPayload)
+            {
+                case GUI::DragDropBlock::Device:
+                    Logger::log("Device dropped!");
+                    break;
+                case GUI::DragDropBlock::Filter:
+                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Filter);
+                    break;
+                case GUI::DragDropBlock::Gain:
+                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Gain);
+                    break;
+                default:
+                    break;
+            }
+
+            node::SetNodePosition(nodeToGiveInitPosition, ImGui::GetMousePos()); //once, to make sure it drops on the right spot!
+        }
+        isHovered = true;
+
+        ImGui::EndDragDropTarget();
+      
+     // ImGui::SetCursorPos(ImGui::GetMousePos());
+     // ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+
+        node::BeginNode(999);
+        ImGui::Dummy({200,100});
+        node::EndNode();
+        node::SetNodePosition(999, ImGui::GetMousePos());
+
+     //   ImGui::PopStyleColor();
+
+    }
 
 
     // Draw input Nodes
@@ -658,12 +735,11 @@ void GUI::renderMixPanel() {
             }
         }
 
-
     node::EndDelete();
     node::EndCreate();
+
     node::End();
     node::SetCurrentEditor(nullptr);
-
     ImGui::End();
 }
 

@@ -37,6 +37,12 @@ struct d11backend {
 class GUI {
 public:
 
+    enum class DragDropBlock {
+        None,
+        Device,
+        Filter,
+        Gain
+    };
 
 
     GUI(Program* prog);
@@ -56,7 +62,6 @@ public:
 
 
     node::EditorContext* node_Context;
-
 
     // Images and heavy graphics
     int imageToRender = viewMode::normal;
@@ -92,6 +97,7 @@ private:
     static const char* getStatusString(int status);
 
 };
+
 
 
 // extra gui elements

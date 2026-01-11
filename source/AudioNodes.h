@@ -36,6 +36,9 @@ public:
 	}
 	BlockType getBlockType() const { return m_blockType; }
 	string getBlockName() const { return Name.toStdString(); }
+
+protected:
+	virtual void render() = 0;
 };
 
 

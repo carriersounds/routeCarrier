@@ -19,6 +19,8 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
         Name
     );
 
+  //  juce::IAudio
+
     juce::AudioDeviceManager::AudioDeviceSetup setup;
 
     deviceManager.getAudioDeviceSetup(setup);
@@ -35,6 +37,10 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
     deviceManager.addAudioCallback(this);       // HERE it auto-calls "aboutToStart"
 }
  
+void DeviceNode::render() {
+
+}
+
 void DeviceNode::selectDevice(const juce::String& nameToFind, bool isOutput)
 {
     juce::OwnedArray<juce::AudioIODeviceType> types;
@@ -142,19 +148,13 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
     sampleRate = device->getCurrentSampleRate();
     blockSize = device->getCurrentBufferSizeSamples();
 
+    devicePointer = device;
+
     Logger::log("Device About To Start: " + device->getName().toStdString());
 
     Logger::log("SampleRate = " + to_string(device->getCurrentSampleRate()));
     Logger::log("BlockSize = " + to_string(device->getCurrentBufferSizeSamples()));
 
-    // Prepare
-    juce::dsp::ProcessSpec spec;
-    spec.sampleRate = sampleRate;
-    spec.maximumBlockSize = blockSize;
-    spec.numChannels = 2; // If mono, else 2 for stereo
-
-    gainProcessor.prepare(spec);
-    gainProcessor.setGainLinear(gainValue.load());
 }
 
 void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels, 
@@ -212,6 +212,9 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         }
     }
 
+   // juce::WASAPIDeviceBase converted = 
+
+
     if (m_blockType == BlockType::OutputDevice) {
 
         const float* data = this->data.getReadPointer(0);
@@ -233,33 +236,17 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         trigger->signal();                                                  // trigger engine that the output fifo is getting empty! needs a refill 
        // fifo should be filled within 1 output sample period
 
+       // get timestampPair?
+
+     //  IAudioClock::GetPosition()
+
+
     }
-
-
-    juce::AudioBuffer<float> buffer;
-
-    if (isInput())
-        buffer = juce::AudioBuffer<float>(const_cast<float**>(inputChannelData), 1, numSamples);
-    else if(isOutput())
-        buffer = juce::AudioBuffer<float>(const_cast<float**>(outputChannelData),1, numSamples);
-
-    float* src = buffer.getWritePointer(0);
-    updateLevel(src, numSamples);
-   
-
 }
-
 void DeviceNode::setAsMainOutput(juce::WaitableEvent* trigger) {
 
     m_isMainOutput = true;
     this->trigger = trigger;
-}
-
-float DeviceNode::getLevel() const noexcept {
-
-    // Logger::log("samplin thread, level = " + to_string(currentLevel.load()));
-
-    return currentLevel.load();
 }
 
 void DeviceNode::initDSP(double sr, int bs)

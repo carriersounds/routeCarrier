@@ -185,7 +185,7 @@ void GUI::renderAllModules() {
     renderMenuBar();
     renderLog();
  
-    renderGraph();
+    renderFIFOState();
   //  renderPreview();                    // LOCKED/ NO MOVE
 
     if (showDemos) {
@@ -442,7 +442,6 @@ void GUI::renderToolbar() {
     Drag the Button onto the graph to place it at a specific location       
     */
 
-
     // big think over hoe ik device names vanaf hier naar de receiver ga krijgen
 
     DragDropBlock dropper = DragDropBlock::None;
@@ -483,7 +482,6 @@ void GUI::renderMixPanel() {
     static constexpr float pinSize = 12.0f;
     static constexpr float spacing = 4.0f;
     static constexpr float NODE_WIDTH = 180.0f;
-    static constexpr float ROW_SPACING = 6.0f;
 
     ImGui::Begin("Mixing Panel", &showMixer, ImGuiWindowFlags_NoNavInputs);
 
@@ -542,6 +540,10 @@ void GUI::renderMixPanel() {
     for (auto& inputDevice : prog->audio.deviceNodes) {
 
          if (!inputDevice.second->isInput()) continue;
+
+
+         // inputDevice.second.render();
+
 
          // ============== TITLE ==============
          node::BeginNode(inputDevice.first);
@@ -626,7 +628,7 @@ void GUI::renderMixPanel() {
                 if (ImGui::SliderFloat(string("##freq" + to_string(effectBlock.first)).c_str(), &cutoff, 20.0f, 20000.0f, "%.1f Hz", ImGuiSliderFlags_Logarithmic))
                     FilterType->cutoffHz.store(cutoff);
 
-                ImGui::Dummy(ImVec2(0, ROW_SPACING));        
+                ImGui::Dummy(ImVec2(0, 6.0f));  // ROW SPACING
     
                 ImGui::Text("Reso");
                 ImGui::SameLine(60);
@@ -793,13 +795,13 @@ void GUI::renderDeviceList() {
     ImGui::End();
 }
 
-void GUI::renderGraph() {
+void GUI::renderFIFOState() {
 
-    return;
-    /*
+  //  return;
+   
     if (!showTimings) return;
 
-    ImGui::Begin("Process timers", &showTimings, ImGuiWindowFlags_NoFocusOnAppearing);
+    ImGui::Begin("FIFO Fill levels", &showTimings, ImGuiWindowFlags_NoFocusOnAppearing);
 
     float fr = ImGui::GetIO().Framerate;
 
@@ -809,30 +811,16 @@ void GUI::renderGraph() {
 
     for (auto& dev : prog->audio.fifoLevels) {
 
-        if (!levels.contains(dev.first))
-            levels.emplace(dev.first,ScrollingBuffer());      // if it doesnt contain an entry for the device/pin yet, add it!
-
-        if (dev.second->isInput()) {
-            levels.emplace(dev.second->outputPin, ScrollingBuffer());
+        if (!levels.contains(dev.first)) {
+            levels.emplace(dev.first,ScrollingBuffer());      // if it doesnt contain an entry for the device/pin yet, add it!         
         }
-        else {
-            levels.emplace(dev.second->inputPin, ScrollingBuffer());
-        }
-
     }
+
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 
-
     for (auto& dev : prog->audio.fifoLevels){
-        levels[dev.first].AddPoint(t, prog->audio.fifoLevels[dev.first]);
-
-        if (dev.second->isInput()) {
-            levels[dev.second->outputPin].AddPoint(t, prog->audio.fifoLevels[dev.second->outputPin]);
-        }
-        else {
-            levels[dev.second->outputPin].AddPoint(t, prog->audio.fifoLevels[dev.second->outputPin]);
-        }
+         levels[dev.first].AddPoint(t, prog->audio.fifoLevels[dev.first]);      
     } 
 
    // guiData.AddPoint(t, 1000.0 / fr);           // TODO: make option to pause graphing (halt)
@@ -842,11 +830,6 @@ void GUI::renderGraph() {
 
     ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
 
-    if (ImGui::SliderFloat("sleep in main Thread", &sleeperMicroseconds, 1, 200, "%.1f us")) {
-      //  prog->audio.microSleep = sleeperMicroseconds;
-    }
-
-
     if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1), ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoTickLabels);
       //  ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
@@ -854,40 +837,32 @@ void GUI::renderGraph() {
         ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 3000);
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
 
+        for (auto& level : levels) {
+            string actualName;
 
-        for (auto& dev : prog->audio.fifoLevels) {
+            if (prog->audio.deviceNodes.contains(level.first)) {
 
-            //string type = prog->audio.hardwareBlocks.at(i)->isInput() ? " (input)" : " (output)";
-            
-            string actualName = prog->audio.deviceNodes[dev.first]->getBlockName();     // only time we actually need to know what it is
-            BaseID readable = dev.first;         
-            BaseID writable;
-
-            if (dev.second->isInput()) {
-                writable = dev.second->outputPin;
-            } else {
-                writable = dev.second->inputPin;
+                actualName = prog->audio.deviceNodes.at(level.first)->getBlockName() + " readable";
+            } else if (prog->audio.deviceNodes.contains(level.first - 1)){
+                actualName = prog->audio.deviceNodes.at(level.first - 1)->getBlockName() + " writable"; // this -1 here is so cursed lol
             }
+           
+            // 1 is readable
+            // 2 is writable
 
-            // block ID is readable
-            // pin ID is writable
-
-            string devicePlusIDread = actualName + " readable";
-            string devicePlusIDwrite = actualName + " writable";
-
-            auto& levelR = levels[writable];
-            auto& levelW = levels[readable];
-            
-
-            ImPlot::PlotLine(devicePlusIDread.c_str(), &levelR.Data[0].x, &levelR.Data[0].y, levelR.Data.size(), 0, levelR.Offset,  sizeof(float));
-            ImPlot::PlotLine(devicePlusIDwrite.c_str(), &levelW.Data[0].x, &levelW.Data[0].y, levelW.Data.size(), 0, levelW.Offset,  sizeof(float));
+            string devicePlusID = actualName;
+            auto& lvl = level.second;
+            ImPlot::PlotLine(devicePlusID.c_str(), &lvl.Data[0].x, &lvl.Data[0].y, lvl.Data.size(), 0, lvl.Offset, 2 * sizeof(float));
         }
+
+            
+        
 
         ImPlot::EndPlot();
     }
 
     ImGui::End();
-    */
+    
 }
 
 void GUI::sendGraphicsToGPU() {

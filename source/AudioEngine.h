@@ -14,13 +14,12 @@ class Program;
 /*
 TODO:
 
-
-+ make sure mixing into output actually works... now only the last copy is valid
+- Make DSPNode and / or device node render functions implemented within their respective sub classes
 - BUG: multiple outputs will still drift -> small crackling will build up
 - Actual sample rate conversion
 - Handle node order, topological sort
 - this means re-work the loop in the main run() function for links
-- +make sure audio always flows from left to right, so input devices first, then dsp, then output devices
+- make sure audio always flows from left to right, so input devices first, then dsp, then output devices
 - CHECK FOR FEEDBACK LOOPS: any output to connect: disable all inputs "before" this signal chain, so it can't even be created (this maintains the non-loopness)
 - proper fifo management
 - Create full channel strip, modular effects, working effects, processdoubler?
@@ -31,16 +30,13 @@ TODO:
     - reverb
     - saturation tanh() / digClip / sinefold
     - waveform visualizer per link
-- Editable parameters through GUI
-    - parameter ID / effect ID? created with ID++, depending on # of params
 - drag link up/down to set gain for that copy stage, buffer write operations = gain included always
-+ delete input/output buffers when a device node gets deleted
 - make samplerate, blocksize and numchannels part of the base class. they all need it anyways. determined by engine params
 - BUG: sometimes when re-connecting nodes to new links, the audio doesn't pass. need to delete DSP block and create new one to solve...
   ^^ probably due to link order in for(link : links)
 
 later: 
-- drag & drop DSP and device nodes
+- drag & drop device nodes
 - save preset
 - make sure you can't make the same link >1 times
 - ability to choose ASIO (like pioneer ddj for routing)

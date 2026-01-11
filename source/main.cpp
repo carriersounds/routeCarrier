@@ -2,25 +2,26 @@
 
 int main() {
     juce::initialiseJuce_GUI();
-    {
-        // Launch Program
-        Program prog;
+    
+    // Launch Program & Audio Engine
+    std::unique_ptr<Program> prog = std::make_unique<Program>();
 
-        // Main GUI Loop
-        while (1) {
-            MSG msg;
-            if (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {   
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-                if (msg.message == WM_QUIT) break;  // close on X press
-            }
-
-            if (GUI::d11.update()) continue;                        // skip render during window resizing, minimizing or dragging
-
-            prog.gui.renderAllModules();
-            prog.gui.sendGraphicsToGPU();
+    // Main GUI Loop
+    while (1) {
+        MSG msg;
+        if (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {   
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+            if (msg.message == WM_QUIT) break;  // close on X press
         }
-    } // scope so Program gets destroyed before JUCE shutdown is called
+
+        if (GUI::d11.update()) continue;                        // skip render during window resizing, minimizing or dragging
+
+        prog->gui.renderAllModules();
+        prog->gui.sendGraphicsToGPU();
+    }
+
+    prog.reset(); // so all audio-related memory is released before JUCE shutdown
 
     juce::shutdownJuce_GUI();
 

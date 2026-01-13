@@ -30,20 +30,44 @@ void AudioEngine::run() {
 
 
     while (audio_engine_on) {
-
         tickCounter++;
-  
        // Logger::log(threadTimer.getDurationLoopString() + " for all processing");
            
-        requestNewAudioBlock.wait();                                        // wait for main output fifo to empty below BLOCKSIZE
+        requestNewAudioBlock.wait();  // wait for main output fifo to empty below BLOCKSIZE
+
+        // for each I/O device: 
+        // calculate ratio of fifo reading. use PID or similar to modulate ratio to aim at target fill average
+        // 
+        // think: normally, this ratio should be 1, but can oscillate around 1 (shows that its working)
+
 
         // 1. READ all input fifo's  once
         for (auto& device : deviceNodes) {     
             if (device.second != nullptr && device.second->isInput()) {
 
-                fifoLevels[device.first] = device.second->hardwareFIFO.getNumReady();
-                fifoLevels[device.second->outputPin] = device.second->hardwareFIFO.getFreeSpace();
 
+                // instead of BLOCKSIZE, calculate numSamples based on fifo state & average
+
+                // SRC
+#if (0) {
+
+                    juce::AudioBuffer<float> SRCbuf(2, FIFOSIZE);
+                    juce::LagrangeInterpolator interpolator;
+                    double ratio = device.second->deviceManager.getAudioDeviceSetup().sampleRate / 48000;
+                    
+                    interpolator.process(ratio, inputChannelData[0], SRCbuf.getWritePointer(0), (double)BLOCKSIZE / ratio);
+                    interpolator.process(ratio, inputChannelData[1], SRCbuf.getWritePointer(1), (double)BLOCKSIZE / ratio);
+
+                    samplesWritten = writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), (double)BLOCKSIZE / ratio);
+
+                    //   samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
+
+                    return;
+#endif//               }
+
+
+
+                fifoLevels[device.first] = device.second->hardwareFIFO.getNumReady();
                 device.second->readFromFifoTo(inputBuffers[device.first].getArrayOfWritePointers(), BLOCKSIZE);            
             }
         }
@@ -60,51 +84,73 @@ void AudioEngine::run() {
         }
 
         // 5. check links and transfer audio
-        for (auto& link : links) {
+        for (auto& linkID : sortedLinks) {
 
-            NodeID nodeLeftOfLink = m_PinNodePairs.at(link.second.ID_left.Get());
-            NodeID nodeRightOfLink = m_PinNodePairs.at(link.second.ID_right.Get());
+            if (!links.contains(linkID)) continue;
 
-            juce::AudioBuffer<float>* currentLinkInput = nullptr;
-            juce::AudioBuffer<float>* currentLinkOutput = nullptr;
+            NodeID startNode = m_PinNodePairs.at(links.at(linkID).ID_left.Get());
+            NodeID endNode = m_PinNodePairs.at(links.at(linkID).ID_right.Get());
 
-            // HW input
-            if (deviceNodes.contains(nodeLeftOfLink)) {
-                currentLinkInput = &inputBuffers[nodeLeftOfLink];
+            PinID startPin = links.at(linkID).ID_left.Get();
+            PinID endPin = links.at(linkID).ID_right.Get();
+
+            juce::AudioBuffer<float>* currentLinkInputBuffer = nullptr;
+            juce::AudioBuffer<float>* currentLinkOutputBuffer = nullptr;
+
+            // HW Inputs
+            if(deviceNodes.contains(startNode) && deviceNodes.at(startNode)->isInput())  
+                currentLinkInputBuffer = &inputBuffers[startNode];
+        
+            // DSP I/O 
+            if (DSPNodes.contains(endNode) && DSPNodes.at(endNode)->hasPin(endPin) == pinType::input) 
+                currentLinkOutputBuffer = &DSPNodes[endNode]->inputBuffer;
+            
+            if (DSPNodes.contains(startNode) && DSPNodes.at(startNode)->hasPin(startPin) == pinType::output) {
+                DSPNodes[startNode]->process();
+                currentLinkInputBuffer = &DSPNodes[startNode]->outputBuffer;
             }
 
-            // DSP input
-            if (DSPNodes.contains(nodeRightOfLink)) {
-                currentLinkOutput = &DSPNodes[nodeRightOfLink]->inputBuffer;
-            }
+            // HW Outputs
+            if (deviceNodes.contains(endNode) && deviceNodes.at(endNode)->isOutput()) 
+                currentLinkOutputBuffer = &outputBuffers[endNode];
 
-
-            // DSP output
-            if (DSPNodes.contains(nodeLeftOfLink) && DSPNodes[nodeLeftOfLink]->sampleRate > 5000.0){
-                DSPNodes[nodeLeftOfLink]->process();
-                currentLinkInput = &DSPNodes[nodeLeftOfLink]->outputBuffer;    // output, since you can only read from a DSP output pin
-            }
-               
-            // HW output
-            if (deviceNodes.contains(nodeRightOfLink)) {
-                currentLinkOutput = &outputBuffers[nodeRightOfLink];
-            } 
-
-            // copy HW inputs to their
-            if (currentLinkInput != nullptr && currentLinkOutput != nullptr)
-                mixInto(currentLinkOutput, currentLinkInput);
+            // copy buffer
+            if (currentLinkInputBuffer != nullptr && currentLinkOutputBuffer != nullptr)
+                mixInto(currentLinkOutputBuffer, currentLinkInputBuffer);
         }
 
         // 6. send output buffers to HW FIFO's
         for (auto& device : deviceNodes) {    
             if (device.second != nullptr && device.second->isOutput()) {
-                
-                if (device.second->isMainOutput()) {
-                    fifoLevels[device.first] = device.second->hardwareFIFO.getNumReady();
-                    fifoLevels[device.second->inputPin] = device.second->hardwareFIFO.getFreeSpace();
+                      
+#if 0
+                // Main output = sync source. everything else follows
+                if (!device.second->isMainOutput()) {
+
+
+                    // SRC
+                    juce::AudioBuffer<float> SRCbuf(2, FIFOSIZE);
+                    juce::LagrangeInterpolator interpolator;
+                    double ratio = device.second->deviceManager.getAudioDeviceSetup().sampleRate / 48000;
+
+                    interpolator.process(ratio, inputChannelData[0], SRCbuf.getWritePointer(0), (double)BLOCKSIZE / ratio);
+                    interpolator.process(ratio, inputChannelData[1], SRCbuf.getWritePointer(1), (double)BLOCKSIZE / ratio);
+
+                    samplesWritten = writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), (double)BLOCKSIZE / ratio);
+
+                    //   samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
+                    
+                    
+                   continue;
+
                 }
-                
+
+#endif
                 device.second->writeToFifoFrom(outputBuffers[device.first].getArrayOfReadPointers(), BLOCKSIZE);
+
+
+                fifoLevels[device.first] = device.second->hardwareFIFO.getNumReady();
+
             }
         }
     }
@@ -159,9 +205,101 @@ BaseID AudioEngine::getNewID(Identifier type) {
 void AudioEngine::createLink(node::PinId leftPin, node::PinId rightPin) {
 
     LinkID nextID = getNewID(Identifier::link);
-
     links.emplace(nextID, BlockLink(nextID, leftPin, rightPin));
 
+    sortedLinks.clear();
+
+   // convert links into nodes for sort algorithm
+   // expects vector<vector<int>>& adj = nodes it points to
+   //  linksAfterNextNode
+
+
+    calculateLinkAdjacents();
+
+    // assume we KNOW the outNodes
+    topologicalSortLinks();
+
+
+}
+
+void AudioEngine::calculateLinkAdjacents() {
+
+    linksAfterNextNode.clear();
+
+    // make sure I/O and O/I connections are corrected if connected in reverse in the GUI
+
+    for (auto& link : links) {
+        NodeID firstNode = m_PinNodePairs.at(link.second.ID_left.Get());
+        NodeID secondNode = m_PinNodePairs.at(link.second.ID_right.Get());
+        PinID firstPin = link.second.ID_left.Get();
+        PinID secondPin = link.second.ID_right.Get();
+    
+        // if either order is wrong
+        if ((deviceNodes.contains(secondNode) && deviceNodes.at(secondNode)->isInput()) || (
+                DSPNodes.contains(firstNode)  &&    DSPNodes.at(firstNode)->hasPin(firstPin) == pinType::input) || (
+                DSPNodes.contains(secondNode) &&    DSPNodes.at(secondNode)->hasPin(secondPin) == pinType::output) || (
+             deviceNodes.contains(firstNode)  && deviceNodes.at(firstNode)->isOutput())) 
+        {
+            node::PinId temp = link.second.ID_left;
+            link.second.ID_left = link.second.ID_right; // invert left and right pin
+            link.second.ID_right = temp;
+        }
+    }
+
+    // get adjacent links
+
+    for (auto& currentLink : links) {    
+        NodeID rightNodeOfCurrentLink = m_PinNodePairs.at(currentLink.second.ID_right.Get());
+
+        for (auto& nextLink : links) {
+            NodeID leftNodeOfNextLink = m_PinNodePairs.at(nextLink.second.ID_left.Get());
+            if (leftNodeOfNextLink == rightNodeOfCurrentLink) {
+                linksAfterNextNode[currentLink.first].push_back(nextLink.first);
+            }
+        }
+        if (!linksAfterNextNode.contains(currentLink.first))
+            linksAfterNextNode.emplace(currentLink.first,vector<NodeID>());
+    }
+}
+
+// input = map where the input
+void AudioEngine::topologicalSortLinks() {
+
+    std::map<LinkID, vector<NodeID>>& adj = linksAfterNextNode;
+
+    int n = adj.size();
+    std::map<LinkID, int> indegree;
+    std::queue<LinkID> q;
+    vector<LinkID> list;
+
+
+    // Compute indegrees
+    for (auto& link : adj) {
+        for (auto& next : link.second)      // for all outgoing links of ID
+            indegree[next]++;
+    }
+
+    // Add all nodes with indegree 0 
+    // into the queue
+    for (auto& degLink : links)
+        if (indegree[degLink.first] == 0)
+            q.push(degLink.first);
+
+    // Kahn’s Algorithm (BFS)
+    while (!q.empty()) {
+        int top = q.front();
+        q.pop();
+        list.push_back(top);
+
+        for (auto& nextID : adj[top]) {
+            indegree[nextID]--;
+            if (indegree[nextID] == 0)
+                q.push(nextID);
+        }
+    }
+    // nodes involved in cycles will never reach degree zero
+
+    sortedLinks = list;
 }
 
 void AudioEngine::deleteLink(LinkID linkID) {
@@ -174,7 +312,7 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     // create 2 new IDs. 1 for device, 1 for pin
     NodeID blockID = getNewID(Identifier::node);
     PinID pinID = getNewID(Identifier::pin);
-    deviceNodes[blockID] = std::make_unique<DeviceNode>(blockType, initDeviceName, blockID);        // add new block
+    deviceNodes[blockID] = make_unique<DeviceNode>(blockType, initDeviceName, blockID);        // add new block
 
     if(blockType == BlockType::InputDevice)
         deviceNodes[blockID]->addPin(pinID, pinType::output);        // add 1 pin for each device. input or output is decided by node type   
@@ -185,8 +323,7 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
 
     m_PinNodePairs.emplace(pinID, blockID);                             // make the parent node easier to find using a LUT
                                                                        
-    fifoLevels.emplace(blockID,0);
-    fifoLevels.emplace(pinID,0);                    // add 2 channels for fifo monitoring (debug)
+    fifoLevels.emplace(blockID,0); // add channel for fifo monitoring (debug)
     
     if (blockType == BlockType::InputDevice) inputBuffers.emplace(blockID,juce::AudioSampleBuffer(2, 512));        // add a buffer for any corresponding HW block
     if (blockType == BlockType::OutputDevice) outputBuffers.emplace(blockID, juce::AudioSampleBuffer(2, 512));
@@ -206,10 +343,10 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
     switch (typeOfEffect)
     {
     case EffectType::Filter:
-        DSPNodes.emplace(blockID, std::make_unique<LowpassNode>(BlockType::DSP, "Filter", blockID));
+        DSPNodes.emplace(blockID, make_unique<LowpassNode>(BlockType::DSP, "Filter", blockID));
         break;
     case EffectType::Gain:
-        DSPNodes.emplace(blockID, std::make_unique<GainNode>(BlockType::DSP, "Gain", blockID));
+        DSPNodes.emplace(blockID, make_unique<GainNode>(BlockType::DSP, "Gain", blockID));
         break;
     default:
         break;
@@ -289,7 +426,7 @@ void AudioEngine::deleteDeviceNode(NodeID deviceID) {
     }
 
     deviceNodes.erase(deviceID);
-
+    fifoLevels.erase(deviceID);
     
 
 }

@@ -174,28 +174,6 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         {
             const float* data = this->data.getWritePointer(0);
 
-            // SRC, working currently :)
-            if (sampleRate < 47900) {    
-
-                juce::AudioBuffer<float> SRCbuf(2, FIFOSIZE);
-                juce::LagrangeInterpolator interpolator;
-                double ratio = deviceManager.getAudioDeviceSetup().sampleRate / 48000;
-                interpolator.process(ratio, inputChannelData[0], SRCbuf.getWritePointer(0), (double)BLOCKSIZE / ratio);
-                interpolator.process(ratio, inputChannelData[1], SRCbuf.getWritePointer(1), (double)BLOCKSIZE / ratio);
-
-                samplesWritten = writeToFifoFrom(SRCbuf.getArrayOfReadPointers(), (double)BLOCKSIZE / ratio);
-                
-               //   samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
-
-                if (samplesWritten > numSamples) {
-                    // sample rate conversion worked (sort of)
-                }
-                if (samplesWritten < numSamples) {
-                    Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
-                }
-                return;
-            }
-
             samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
             
             if (samplesWritten > numSamples) {
@@ -205,15 +183,10 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             if (samplesWritten < numSamples) {
                 Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
             }
-
-
         } else {
             Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
         }
     }
-
-   // juce::WASAPIDeviceBase converted = 
-
 
     if (m_blockType == BlockType::OutputDevice) {
 

@@ -12,6 +12,17 @@ DSPNode::DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID
     outputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
 }
 
+void DSPNode::render() {
+
+
+    // render name, if icon, needs to be base member or set elsewhere
+
+    renderInterface();  // implemented in derived FX classes
+
+    // render i/o pins
+
+}
+
 void DSPNode::process() {
     outputBuffer.makeCopyOf(inputBuffer, false);    // output buf is the process context
     juce::MidiBuffer empt;                  // function needs it RIP

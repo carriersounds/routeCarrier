@@ -1,5 +1,4 @@
 ﻿#include "AudioEffects.h"
-#include "mainHeader.h"     // for GUI stuff
 
 
 void LowpassNode::processDSP(juce::dsp::AudioBlock<float>& block) {

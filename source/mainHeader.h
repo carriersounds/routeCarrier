@@ -70,8 +70,7 @@ typedef size_t BaseID;
 typedef size_t ParamID;
 
 using std::unique_ptr;
-using std::shared_ptr;
-using std::make_shared;
+using std::make_unique;
 
 
 enum class ParamType {

@@ -4,7 +4,7 @@ int main() {
     juce::initialiseJuce_GUI();
     
     // Launch Program & Audio Engine
-    std::unique_ptr<Program> prog = std::make_unique<Program>();
+    unique_ptr<Program> prog = make_unique<Program>();
 
     // Main GUI Loop
     while (1) {

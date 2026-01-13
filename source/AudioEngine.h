@@ -73,11 +73,14 @@ public:
     std::map<NodeID, unique_ptr<DeviceNode>> deviceNodes;       // node ID, which contains pins   
     std::map<NodeID, unique_ptr<DSPNode>> DSPNodes;             // node ID, which contains pins   
     std::map<LinkID,BlockLink> links;                           // link ID + pins
+    vector<NodeID> sortedLinks;                                 // configured after topological sort of links
+    std::map<LinkID, vector<LinkID>> linksAfterNextNode;        // as input for toposort
+
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
     std::map<NodeID, juce::AudioBuffer<float>> inputBuffers;
     std::map<NodeID, juce::AudioBuffer<float>> outputBuffers;
-    std::map<NodeID,float> fifoLevels;                              // for metering buffers
-   // juce::AudioProcessorGraph DSPGRaph;
+    std::map<NodeID,float> fifoLevels;                          // for metering buffers
+
 
     // Node management
     NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName);          // choose input or output, returns next ID
@@ -85,7 +88,9 @@ public:
     void deleteDeviceNode(NodeID deviceID);
     void deleteDSPNode(NodeID blockID);
     void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput);   
-   
+    void calculateLinkAdjacents();
+    void topologicalSortLinks();
+
     BaseID getNewID(Identifier type);                                                   // uniqueID++
     void createLink(node::PinId leftPin, node::PinId rightPin);
     void deleteLink(LinkID linkID);
@@ -102,7 +107,7 @@ public:
     void setDSPParameter(NodeID blockID,int effectID, float value);     // --> node indexing probably using some smartypants graph theory
     void modifyEffectBlock(NodeID blockID);                             // add or remove effect from the chain         
     void editNode(int action, NodeID nodeID);                           // enum action (remove/connect/split/merge), nodeID is how they connect
-    void topologicalSortNodes();                                        // to make sure the processing order / graph is actually correct
+    
 
     
 

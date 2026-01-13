@@ -42,6 +42,9 @@ public:
 
     // ================ Configuration =====================
 
+    void render() override;               // render name & i/o pins
+    virtual void renderInterface() = 0;     // render actual effect interface / params, should be contained in main render function
+
     virtual EffectType getType() = 0;                                       // used by GUI for parameter management
 
     const juce::String getName() const override { return "DSP Node"; }

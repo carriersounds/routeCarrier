@@ -491,7 +491,6 @@ void GUI::renderMixPanel() {
     node::Begin("editore", ImVec2(0.0, 0.0f));
 
     // Handle node input from drag & drop
-
     if (ImGui::BeginDragDropTarget())   // triggers every frame when hovered
     {
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_DEMO_CELL");
@@ -534,7 +533,6 @@ void GUI::renderMixPanel() {
      //   ImGui::PopStyleColor();
 
     }
-
 
     // Draw input Nodes
     for (auto& inputDevice : prog->audio.deviceNodes) {
@@ -606,7 +604,10 @@ void GUI::renderMixPanel() {
     for (auto& effectBlock : prog->audio.DSPNodes) {
 
 
-        // ============== TITLE ==============
+        effectBlock.second->render();
+
+
+        // ============== TITLE ==============  
          node::BeginNode(effectBlock.first);
          ImGui::Text(effectBlock.second->getBlockName().c_str());
          ImVec2 p = ImGui::GetCursorScreenPos();
@@ -614,7 +615,7 @@ void GUI::renderMixPanel() {
          ImGui::GetWindowDrawList()->AddLine(p,ImVec2(p.x + w, p.y),IM_COL32(120, 120, 120, 255));
          ImGui::Dummy(ImVec2(0, 6)); 
 
-         // ============== PARAMETERS / EFFECT DEPENDENT --> FANCY GUI STUFF HERE ==============
+         // ============== PARAMETERS / EFFECT DEPENDENT --> FANCY GUI STUFF HERE =======--> 
          ImGui::PushItemWidth(NODE_WIDTH - 40);
          switch (effectBlock.second->getType())
             {
@@ -655,7 +656,7 @@ void GUI::renderMixPanel() {
          ImGui::PopItemWidth();
          ImGui::NewLine();
 
-         // ============== INPUT PIN ==============
+         // ============== INPUT PIN ============== 
          const char* labelin = "    IN";
          ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
          node::BeginPin(effectBlock.second->inputPin, ed::PinKind::Input);         
@@ -739,9 +740,9 @@ void GUI::renderMixPanel() {
 
     node::EndDelete();
     node::EndCreate();
-
     node::End();
     node::SetCurrentEditor(nullptr);
+
     ImGui::End();
 }
 
@@ -803,24 +804,41 @@ void GUI::renderFIFOState() {
 
     ImGui::Begin("FIFO Fill levels", &showTimings, ImGuiWindowFlags_NoFocusOnAppearing);
 
+    ImGui::Text("Input = before read, output = after write");
+
     float fr = ImGui::GetIO().Framerate;
-
-
     static ScrollingBuffer guiData;
-    static std::map<NodeID,ScrollingBuffer> levels;
+    static std::map<NodeID, ScrollingBuffer> levels;
 
     for (auto& dev : prog->audio.fifoLevels) {
-
         if (!levels.contains(dev.first)) {
             levels.emplace(dev.first,ScrollingBuffer());      // if it doesnt contain an entry for the device/pin yet, add it!         
         }
     }
 
+    vector<NodeID> lvlToDelete;
+    for (auto& lvl : levels) 
+        if (!prog->audio.fifoLevels.contains(lvl.first)) 
+            lvlToDelete.push_back(lvl.first);
+         
+    for (auto& lvl : lvlToDelete)
+        levels.erase(lvl);
+
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
-
     for (auto& dev : prog->audio.fifoLevels){
-         levels[dev.first].AddPoint(t, prog->audio.fifoLevels[dev.first]);      
+
+        // simple block filter
+        static float fifofilter[3];
+        static uint8_t idx = 0;
+        idx = idx == 2 ? 0 : idx + 1;
+        fifofilter[idx] = prog->audio.fifoLevels[dev.first];
+        float filteredValue = 0;    
+        for (uint8_t i = 0; i < 3; i++) {
+            filteredValue += fifofilter[i] / 3;
+        }
+
+         levels[dev.first].AddPoint(t, prog->audio.fifoLevels[dev.first]);
     } 
 
    // guiData.AddPoint(t, 1000.0 / fr);           // TODO: make option to pause graphing (halt)
@@ -834,7 +852,7 @@ void GUI::renderFIFOState() {
         ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoTickLabels);
       //  ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
         ImPlot::SetupAxisLimits(ImAxis_X1, (double)t - history, t, ImGuiCond_Always);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 3000);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -100, 3000);
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
 
         for (auto& level : levels) {

@@ -4,8 +4,9 @@
 DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID)
         : hardwareFIFO(FIFOSIZE), 
         m_isMainOutput(false), 
-        data(2, FIFOSIZE),
-        AudioNode(blocktype,initDeviceName,nodeID)
+        hardwareBuffer(2, FIFOSIZE),
+        AudioNode(blocktype,initDeviceName,nodeID),
+        devicePointer(nullptr)
     {
 
     trigger = nullptr;
@@ -106,12 +107,12 @@ int DeviceNode::writeToFifoFrom(const float* const* input, int numSamples) {
     if (size1 > 0)
     {
         for (int ch = 0; ch < numChannels; ++ch)
-            juce::FloatVectorOperations::copy(data.getWritePointer(ch, start1), input[ch], size1);
+            juce::FloatVectorOperations::copy(hardwareBuffer.getWritePointer(ch, start1), input[ch], size1);
     }
 
     if (size2 > 0) {
         for (int ch = 0; ch < numChannels; ++ch)
-            juce::FloatVectorOperations::copy(data.getWritePointer(ch, start2), input[ch] + size1, size2);
+            juce::FloatVectorOperations::copy(hardwareBuffer.getWritePointer(ch, start2), input[ch] + size1, size2);
     }
 
     hardwareFIFO.finishedWrite(size1 + size2);
@@ -126,13 +127,13 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples)
 
     if (size1 > 0) {
         for (int ch = 0; ch < numChannels; ++ch)
-            juce::FloatVectorOperations::copy(output[ch], data.getReadPointer(ch, start1),
+            juce::FloatVectorOperations::copy(output[ch], hardwareBuffer.getReadPointer(ch, start1),
                 size1);
     }
 
     if (size2 > 0) {
         for (int ch = 0; ch < numChannels; ++ch)
-            juce::FloatVectorOperations::copy(output[ch], data.getReadPointer(ch, start2), size2);
+            juce::FloatVectorOperations::copy(output[ch], hardwareBuffer.getReadPointer(ch, start2), size2);
 
     }
 
@@ -141,6 +142,20 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples)
 
 
     return size1 + size2;
+}
+
+void DeviceNode::prepareOutput() {
+
+    outputBuffer.clear();
+
+    if (m_blockType == BlockType::InputDevice) {       
+        readFromFifoTo(outputBuffer.getArrayOfWritePointers(), BLOCKSIZE);
+    }
+    else if (m_blockType == BlockType::OutputDevice) {
+        writeToFifoFrom(inputBuffer.getArrayOfReadPointers(), BLOCKSIZE);
+    }
+
+    // if output, actually send to HW, since these will always be last after sorting
 }
 
 void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
@@ -172,7 +187,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
 
         if (!fifoTooFull)
         {
-            const float* data = this->data.getWritePointer(0);
+            const float* data = this->hardwareBuffer.getWritePointer(0);
 
             samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
             
@@ -188,9 +203,17 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         }
     }
 
+
+    // for each I/O device: 
+    // calculate ratio of fifo reading. use PID or similar to modulate ratio to aim at target fill average
+    // 
+    // think: normally, this ratio should be 1, but can oscillate around 1 (shows that its working)
+
+
+
     if (m_blockType == BlockType::OutputDevice) {
 
-        const float* data = this->data.getReadPointer(0);
+        const float* data = this->hardwareBuffer.getReadPointer(0);
         int samplesRead = readFromFifoTo(outputChannelData, numSamples);
         if (samplesRead < numSamples)
         {

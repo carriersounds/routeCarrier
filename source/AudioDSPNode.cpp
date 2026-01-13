@@ -3,13 +3,9 @@
 
 DSPNode::DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) :
     AudioNode(blocktype, initDeviceName, nodeID),
-    inputBuffer(2, BLOCKSIZE),
-    outputBuffer(2, BLOCKSIZE),
     numInputs(2),
     numOutputs(2) {
 
-    inputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
-    outputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
 }
 
 void DSPNode::render() {
@@ -24,6 +20,7 @@ void DSPNode::render() {
 }
 
 void DSPNode::process() {
+    outputBuffer.clear();
     outputBuffer.makeCopyOf(inputBuffer, false);    // output buf is the process context
     juce::MidiBuffer empt;                  // function needs it RIP
     processBlock(outputBuffer, empt);

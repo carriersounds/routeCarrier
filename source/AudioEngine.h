@@ -69,16 +69,12 @@ public:
    
     
     // Identifiers
-    DeviceNode nullDevice;                                      // no input, no output, just for namecheck
-    std::map<NodeID, unique_ptr<DeviceNode>> deviceNodes;       // node ID, which contains pins   
-    std::map<NodeID, unique_ptr<DSPNode>> DSPNodes;             // node ID, which contains pins   
-    std::map<LinkID,BlockLink> links;                           // link ID + pins
-    vector<NodeID> sortedLinks;                                 // configured after topological sort of links
-    std::map<LinkID, vector<LinkID>> linksAfterNextNode;        // as input for toposort
-
+    DeviceNode nullDevice;                                      // no input, no output, just for namecheck 
+    std::map<NodeID, unique_ptr<AudioNode>> nodes;              // Both DSP and device nodes
+    std::map<NodeID, vector<NodeID>> sends;                     // as input for toposort
+    vector<NodeID> sortedNodes;       
+    std::map<LinkID, BlockLink> links;
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
-    std::map<NodeID, juce::AudioBuffer<float>> inputBuffers;
-    std::map<NodeID, juce::AudioBuffer<float>> outputBuffers;
     std::map<NodeID,float> fifoLevels;                          // for metering buffers
 
 
@@ -88,8 +84,9 @@ public:
     void deleteDeviceNode(NodeID deviceID);
     void deleteDSPNode(NodeID blockID);
     void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput);   
-    void calculateLinkAdjacents();
-    void topologicalSortLinks();
+    void calculateSends(LinkID newlink);
+
+    void topologicalSortNodes();
 
     BaseID getNewID(Identifier type);                                                   // uniqueID++
     void createLink(node::PinId leftPin, node::PinId rightPin);
@@ -107,8 +104,6 @@ public:
     void setDSPParameter(NodeID blockID,int effectID, float value);     // --> node indexing probably using some smartypants graph theory
     void modifyEffectBlock(NodeID blockID);                             // add or remove effect from the chain         
     void editNode(int action, NodeID nodeID);                           // enum action (remove/connect/split/merge), nodeID is how they connect
-    
-
     
 
     bool audio_engine_on;

@@ -30,12 +30,12 @@ class DSPNode: public AudioNode, public juce::AudioProcessor
 {
 public:
 
-    juce::AudioBuffer<float> inputBuffer;
-    juce::AudioBuffer<float> outputBuffer;
+
 
     DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 
     //================ AudioProcessor ====================
+    void prepareOutput() override { process(); }
     void process();
     void prepareToPlay(double sampleRate, int blockSize) override;
     void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override; 

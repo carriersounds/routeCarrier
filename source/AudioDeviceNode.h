@@ -16,9 +16,6 @@ public:
     }
 
 
-    bool isInput() const { return (m_blockType == BlockType::InputDevice); }
-    bool isOutput() const { return (m_blockType == BlockType::OutputDevice); }
-
     // Producer: write samples into FIFO. if device == input : called from callback ; else called from audioThread
     // Consumer: read samples from FIFO    if device == output : called from callback ; else called from audioThread
     int writeToFifoFrom(const float* const* input, int numSamples);  
@@ -42,16 +39,17 @@ public:
 
     void setAsMainOutput(juce::WaitableEvent* trigger);
   
+    void prepareOutput() override;
     
     bool isMainOutput() const { return m_isMainOutput; }
     
     const float* getDataPointer() const {
-        return data.getReadPointer(0);
+        return hardwareBuffer.getReadPointer(0);
     }
 
     // === Members ===
     juce::AbstractFifo hardwareFIFO;    // for hardware inputs to write to and for hardware outputs to RECEIVE data from  
-    juce::AudioBuffer<float> data;
+    juce::AudioBuffer<float> hardwareBuffer;
 
 private:  
     bool m_isMainOutput;

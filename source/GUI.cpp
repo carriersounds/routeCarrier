@@ -535,10 +535,9 @@ void GUI::renderMixPanel() {
     }
 
     // Draw input Nodes
-    for (auto& inputDevice : prog->audio.deviceNodes) {
+    for (auto& inputDevice : prog->audio.nodes) {
 
          if (!inputDevice.second->isInput()) continue;
-
 
          // inputDevice.second.render();
 
@@ -572,7 +571,7 @@ void GUI::renderMixPanel() {
     }
 
     // Draw output Nodes
-    for (auto& outputDevice : prog->audio.deviceNodes) {
+    for (auto& outputDevice : prog->audio.nodes) {
 
         if (!outputDevice.second->isOutput()) continue;
 
@@ -601,10 +600,12 @@ void GUI::renderMixPanel() {
     }
 
     // Draw DSP Nodes
-    for (auto& effectBlock : prog->audio.DSPNodes) {
+    for (auto& effectBlock : prog->audio.nodes) {
 
+        if (!effectBlock.second->isDSP()) continue;
 
-        effectBlock.second->render();
+        DSPNode* fxptr = dynamic_cast<DSPNode*>(effectBlock.second.get());
+        fxptr->render();
 
 
         // ============== TITLE ==============  
@@ -617,7 +618,7 @@ void GUI::renderMixPanel() {
 
          // ============== PARAMETERS / EFFECT DEPENDENT --> FANCY GUI STUFF HERE =======--> 
          ImGui::PushItemWidth(NODE_WIDTH - 40);
-         switch (effectBlock.second->getType())
+         switch (fxptr->getType())
             {
             case EffectType::Filter:
             {
@@ -702,8 +703,19 @@ void GUI::renderMixPanel() {
             {
                 if (startPinId && endPinId) // both pins are valid
                 {
-                    // Check if connection is valid for your application
-                    if (startPinId != endPinId) {
+                    // Check if connection is valid for your application (doesn't already exist)
+                    NodeID node1 = prog->audio.m_PinNodePairs.at(startPinId.Get());
+                    NodeID node2 = prog->audio.m_PinNodePairs.at(endPinId.Get());
+
+                    bool nodeValid = true;
+                    for (auto& nexts : prog->audio.sends.at(node1)) {
+                        if (nexts == node2) nodeValid = false;
+                    }  
+                    for (auto& nexts : prog->audio.sends.at(node2)) {
+                        if (nexts == node1) nodeValid = false;
+                    }
+
+                    if (startPinId != endPinId && nodeValid){
                         if (node::AcceptNewItem())                          // RELEASED 
                         {
                             prog->audio.createLink(startPinId, endPinId);   // Creates new link
@@ -711,6 +723,8 @@ void GUI::renderMixPanel() {
                     }
                     else
                         node::RejectNewItem();                              // Shows invalid link feedback
+
+
                 }
             }
         }
@@ -728,10 +742,10 @@ void GUI::renderMixPanel() {
             node::NodeId nodeID;
             if (node::QueryDeletedNode(&nodeID)) {
 
-                if (prog->audio.deviceNodes.contains(nodeID.Get()))   // delete device block
+                if (prog->audio.nodes.contains(nodeID.Get()))   // delete device block
                     prog->audio.deleteDeviceNode(nodeID.Get());
 
-                if (prog->audio.DSPNodes.contains(nodeID.Get()))       // delete DSP block
+                if (prog->audio.nodes.contains(nodeID.Get()))       // delete DSP block
                     prog->audio.deleteDSPNode(nodeID.Get());
 
                 node::AcceptDeletedItem();
@@ -858,11 +872,11 @@ void GUI::renderFIFOState() {
         for (auto& level : levels) {
             string actualName;
 
-            if (prog->audio.deviceNodes.contains(level.first)) {
+            if (prog->audio.nodes.contains(level.first)) {
 
-                actualName = prog->audio.deviceNodes.at(level.first)->getBlockName() + " readable";
-            } else if (prog->audio.deviceNodes.contains(level.first - 1)){
-                actualName = prog->audio.deviceNodes.at(level.first - 1)->getBlockName() + " writable"; // this -1 here is so cursed lol
+                actualName = prog->audio.nodes.at(level.first)->getBlockName() + " readable";
+            } else if (prog->audio.nodes.contains(level.first - 1)){
+                actualName = prog->audio.nodes.at(level.first - 1)->getBlockName() + " writable"; // this -1 here is so cursed lol
             }
            
             // 1 is readable

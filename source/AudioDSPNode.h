@@ -52,6 +52,7 @@ public:
     int numOutputs = 2;
     bool bypassed = false;
 
+
 private:
     //================ Boilerplate =======================
     bool hasEditor() const override { return false; }
@@ -73,7 +74,6 @@ private:
 
 protected:
     //=========== IMPLEMENTED BY SPECIFIC DSP EFFECTS ===========
-    // 
     virtual void prepareDSP(const juce::dsp::ProcessSpec&) = 0;
     virtual void processDSP(juce::dsp::AudioBlock<float>&) = 0;
 

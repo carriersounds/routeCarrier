@@ -53,3 +53,16 @@ void AudioNode::copyBuffer(juce::AudioBuffer<float>* dest, const juce::AudioBuff
 
     dest->makeCopyOf(*src, false);
 }
+
+bool AudioNode::ImGui_InvertedFloatSlider(const char* name, float& param, float min, float max, const char* format, ImGuiSliderFlags flags) {
+    
+    ImGui::Text(name);
+    ImGui::SameLine(60);
+    if (ImGui::SliderFloat(string("##" + (string)name + to_string(ID)).c_str(), &param, min, max, format, flags))
+        return true;
+    else
+        return false;
+    
+    // "paramChanged = true" is not implemented here, as we might want to do some calculations or interpretation
+    // on the parameters first before flagging the parameters as changed to the processor
+}

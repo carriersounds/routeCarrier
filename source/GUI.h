@@ -41,7 +41,9 @@ public:
         None,
         Device,
         Filter,
-        Gain
+        Gain,
+        Reverb,
+        EQ
     };
 
 

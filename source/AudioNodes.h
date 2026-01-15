@@ -10,27 +10,16 @@ public:
 
 	AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 	virtual ~AudioNode() = default;
-	NodeID ID;
-	juce::String Name;
-	BlockType m_blockType;
 	
-	PinID inputPin;
-	PinID outputPin;
-	std::map<NodeID,AudioNode*> nextNodes;
-	
-	double sampleRate = 48000;
-	int blockSize = BLOCKSIZE;
-	int numChannels = 2;
 
-	juce::AudioBuffer<float> inputBuffer;
-	juce::AudioBuffer<float> outputBuffer;
-
-	NodeID getID() const {return ID;}
-	void addPin(PinID pinID, pinType type) { 
-		
+	// Main Interface
+	bool isInput() const { return (m_blockType == BlockType::InputDevice); }
+	bool isOutput() const { return (m_blockType == BlockType::OutputDevice); }
+	bool isDSP() const { return (m_blockType == BlockType::DSP); }
+	NodeID getID() const { return ID; }
+	void addPin(PinID pinID, pinType type) {
 		if (type == pinType::input) inputPin = pinID;
 		if (type == pinType::output) outputPin = pinID;
-	
 	}
 	pinType hasPin(PinID pinID) const {
 		if (inputPin == pinID) return pinType::input;
@@ -39,17 +28,37 @@ public:
 	}
 	BlockType getBlockType() const { return m_blockType; }
 	string getBlockName() const { return Name.toStdString(); }
-	virtual void prepareOutput() = 0;		// can only run if all it's inputs have been mixed into its inputbuffer
+
+	// Called from main engine loop
+	virtual void prepareOutput() = 0;		// can only run if all it's inputs have been mixed into its inputbuffer (requires topo sort)
 	void sendAudioToNextNodes();
+
+	// GUI
+	virtual void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) = 0;
+
+	// Data
+	PinID inputPin;
+	PinID outputPin;
+	std::map<NodeID,AudioNode*> nextNodes;
+	juce::AudioBuffer<float> inputBuffer;
+
+	double sampleRate = 48000;
+	int blockSize = BLOCKSIZE;
+	int numChannels = 2;
+
+
+
+protected:
+	NodeID ID;
+	juce::String Name;
+	BlockType m_blockType;
+	juce::AudioBuffer<float> outputBuffer;
 	static void mixInto(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src);
 	static void copyBuffer(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src);
-	bool isInput() const { return (m_blockType == BlockType::InputDevice); }
-	bool isOutput() const { return (m_blockType == BlockType::OutputDevice); }
-	bool isDSP() const { return (m_blockType == BlockType::DSP); }
 
-	virtual void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) = 0;
-protected:
-	
+	// Managing GUI-engine safety;
+	atomic<bool> parameterChanged = false;
+	bool ImGui_InvertedFloatSlider(const char* name, float& param, float min, float max, const char* format = "%.2f", ImGuiSliderFlags flags = 0);
 };
 
 

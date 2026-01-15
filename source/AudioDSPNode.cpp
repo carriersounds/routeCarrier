@@ -10,8 +10,9 @@ DSPNode::DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID
 
 void DSPNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
 
-    // ============== TITLE ==============  
     node::BeginNode(ID);
+
+    // ============== TITLE ==============  
     ImGui::Text(getBlockName().c_str());
     ImVec2 p = ImGui::GetCursorScreenPos();
     float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
@@ -19,7 +20,7 @@ void DSPNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
     ImGui::Dummy(ImVec2(0, 6));
 
 
-    // ============== PARAMETERS / EFFECT DEPENDENT --> FANCY GUI STUFF HERE =======--> 
+    // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX ===== 
     ImGui::PushItemWidth(NODE_WIDTH - 40);
     renderInterface(); 
     ImGui::PopItemWidth();
@@ -56,11 +57,8 @@ void DSPNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
     poso.x = poso.x - textSizeOut.y - spacing;      // textSizeOut.y = circle width(spacing)
     dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f), textSizeOut.y * 0.5f, IM_COL32(250, 150, 30, 255));
     node::EndPin();
+
     node::EndNode();
-
-
-    // render i/o pins
-
 }
 
 void DSPNode::process() {

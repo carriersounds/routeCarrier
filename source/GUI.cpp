@@ -444,24 +444,20 @@ void GUI::renderToolbar() {
 
 
 
-    if(ImGui::Button("+ FILTER", { 180,80 }))prog->audio.addNewDSPNode(EffectType::Filter);
+    if(ImGui::Button("FILTER", { 180,80 }))prog->audio.addNewDSPNode(EffectType::Filter);
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
     {
-
         dropper = DragDropBlock::Filter;
-
         // triggers only on 1st button click
         ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
         ImGui::EndDragDropSource();
 
     }
 
-    if(ImGui::Button("+ GAIN", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Gain);
+    if(ImGui::Button("GAIN", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Gain);
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
     {
-
         dropper = DragDropBlock::Gain;
-
         // triggers only on 1st button click
         ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
         ImGui::EndDragDropSource();
@@ -469,6 +465,27 @@ void GUI::renderToolbar() {
     }
     
    
+    if (ImGui::Button("REVERB", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Reverb);
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+    {
+        dropper = DragDropBlock::Reverb;
+        // triggers only on 1st button click
+        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+        ImGui::EndDragDropSource();
+
+    }
+
+    if (ImGui::Button("EQ 4", { 180,80 })) prog->audio.addNewDSPNode(EffectType::EQ);
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+    {
+        dropper = DragDropBlock::EQ;
+        // triggers only on 1st button click
+        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+        ImGui::EndDragDropSource();
+
+    }
+
+
     ImGui::End();
 
 }
@@ -498,14 +515,19 @@ void GUI::renderMixPanel() {
             switch (dragPayload)
             {
                 case GUI::DragDropBlock::Device:
-                    Logger::log("Device dropped!");
+                    Logger::log("Unknown Effect", level_INFO);
                     break;
                 case GUI::DragDropBlock::Filter:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Filter);
+                    Logger::log("Added Filter",level_INFO);
                     break;
                 case GUI::DragDropBlock::Gain:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Gain);
+                    Logger::log("Added Gain", level_INFO);
                     break;
+                case GUI::DragDropBlock::Reverb:
+                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Reverb);
+                    Logger::log("Added Reverb", level_INFO);
                 default:
                     break;
             }
@@ -573,7 +595,6 @@ void GUI::renderMixPanel() {
         {
             node::LinkId linkId;
             if (QueryDeletedLink(&linkId)) {
-
                 prog->audio.deleteLink(linkId.Get());
                 node::AcceptDeletedItem();
             }

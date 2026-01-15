@@ -28,20 +28,18 @@ void AudioEngine::run() {
     while (audio_engine_on) {
         tickCounter++;
            
-        requestNewAudioBlock.wait();  // wait for main output fifo to empty below BLOCKSIZE
-
+        requestNewAudioBlock.wait();                // wait for main output fifo to empty below BLOCKSIZE
         nodeLock.lock();
-        for (auto& node : sortedNodes) {
 
-            nodes.at(node)->inputBuffer.clear();
-            nodes.at(node)->outputBuffer.clear();
+        for (auto& node : sortedNodes) {
+            nodes.at(node)->inputBuffer.clear();    // so they can be filled
         }
 
         for (auto& node : sortedNodes) {
-
             nodes.at(node)->prepareOutput();
             nodes.at(node)->sendAudioToNextNodes();
         }
+
         nodeLock.unlock();
     }
 }
@@ -159,7 +157,7 @@ void AudioEngine::deleteLink(LinkID linkID) {
         }
     }
 
-    nodes.at(leftNode)->nextNodes.erase(rightNode);
+    nodes.at(leftNode)->nextNodes.erase(rightNode);         // also delete device pointer from "nextNodes" list
     links.erase(linkID);
 
     topologicalSortNodes();
@@ -204,37 +202,39 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
     PinID inputPinID = getNewID(Identifier::pin);
     PinID outputPinID = getNewID(Identifier::pin);
 
-
     std::unique_lock<std::mutex> lock(nodeLock);
 
     switch (typeOfEffect)
     {
     case EffectType::Filter:
-        nodes.emplace(blockID, make_unique<LowpassNode>(BlockType::DSP, "Filter", blockID));
+        nodes.emplace(blockID, make_unique<FilterNode>(BlockType::DSP, "Filter", blockID));
         break;
     case EffectType::Gain:
         nodes.emplace(blockID, make_unique<GainNode>(BlockType::DSP, "Gain", blockID));
         break;
+    case EffectType::Reverb:
+        nodes.emplace(blockID, make_unique<ReverbNode>(BlockType::DSP, "Reverb", blockID));
+        break;
+    case EffectType::EQ:
+        nodes.emplace(blockID, make_unique<EqualizerNode>(BlockType::DSP, "EQ 4", blockID));
     default:
         break;
     }   
     
     sends.emplace(blockID, vector<NodeID>());
 
-
     DSPNode* dspptr = dynamic_cast<DSPNode*>(nodes.at(blockID).get());
-    dspptr->prepareToPlay(48000, BLOCKSIZE);                             // initialize samplerates   // ONLY FOR DSPNODE
+    dspptr->prepareToPlay(48000, BLOCKSIZE);                                 // initialize samplerates   // ONLY FOR DSPNODE
 
 
-    nodes.at(blockID)->addPin(inputPinID, pinType::input);                             // assign pins
+    nodes.at(blockID)->addPin(inputPinID, pinType::input);                   // assign pins
     nodes.at(blockID)->addPin(outputPinID, pinType::output);
 
-    m_PinNodePairs.emplace(inputPinID, blockID);                                        // save pin assignment in LUT
+    m_PinNodePairs.emplace(inputPinID, blockID);                             // save pin assignment in LUT
     m_PinNodePairs.emplace(outputPinID, blockID);
 
     return blockID;
 }
-
 
 void AudioEngine::deleteNode(NodeID nodeToDelete) {
 

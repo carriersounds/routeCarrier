@@ -235,7 +235,6 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
 
     if (m_blockType == BlockType::InputDevice) {
 
-
         const int fifoFill = hardwareFIFO.getNumReady();
         const int fifoCapacity = hardwareFIFO.getTotalSize();               // Drift mitigation: avoid FIFO runaway
         const bool fifoTooFull = fifoFill > (fifoCapacity * 3) / 4;         // Simple soft ceiling: drop input if FIFO is too full

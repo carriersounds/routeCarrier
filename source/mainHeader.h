@@ -58,6 +58,7 @@ using std::to_string;
 using std::thread;
 using std::chrono::high_resolution_clock;
 using namespace std::literals::chrono_literals;
+using std::atomic;
 namespace fs = std::filesystem;
 typedef vector<BYTE> bytearray;
 typedef vector<uint16_t> int16array;
@@ -83,7 +84,9 @@ enum class EffectType {
     None,
     Filter,
     Phaser,
-    Gain
+    Gain,
+    Reverb,
+    EQ
 };
 
 struct BlockLink {

@@ -75,7 +75,6 @@ private:
     Program* prog;
     ImGuiIO* io;
     UI viewport = UI::fullscreen_admin;
-    HWND LRI_hwnd = NULL;
     HWND hwnd;
     WNDCLASSEXW wc;
     string timestamp;

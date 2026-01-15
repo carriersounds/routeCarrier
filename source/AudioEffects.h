@@ -25,7 +25,7 @@ protected:
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{filter.reset(); filter.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
     
-    void renderInterface() override {};
+    void renderInterface() override;
     
 private:
     using Filter = juce::dsp::IIR::Filter<float>;
@@ -44,7 +44,7 @@ public:
 
     std::atomic<float> gainValueDB;
 protected:
-    void renderInterface() override {};
+    void renderInterface() override;
 
     EffectType getType() { return EffectType::Gain; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{gain.reset();gain.prepare(spec);}

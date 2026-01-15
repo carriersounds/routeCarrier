@@ -30,6 +30,7 @@ void AudioEngine::run() {
            
         requestNewAudioBlock.wait();  // wait for main output fifo to empty below BLOCKSIZE
 
+        nodeLock.lock();
         for (auto& node : sortedNodes) {
 
             nodes.at(node)->inputBuffer.clear();
@@ -41,15 +42,8 @@ void AudioEngine::run() {
             nodes.at(node)->prepareOutput();
             nodes.at(node)->sendAudioToNextNodes();
         }
+        nodeLock.unlock();
     }
-}
-
-void AudioEngine::copyBuffer(juce::AudioBuffer<float>* dest,const juce::AudioBuffer<float>* src)
-{
-    jassert(dest->getNumChannels() == src->getNumChannels());
-    jassert(dest->getNumSamples() == src->getNumSamples());
-
-    dest->makeCopyOf(*src, false);
 }
 
 BaseID AudioEngine::getNewID(Identifier type) {
@@ -98,7 +92,7 @@ void AudioEngine::calculateSends(LinkID newlink) {
         secondNode = tempNode;
     }
  
-    nodes[firstNode]->nextNodes.push_back(nodes[secondNode].get());     // add the node right of the link to the left node's "nextNodes" list
+    nodes.at(firstNode)->nextNodes.emplace(secondNode,nodes[secondNode].get());     // add the node right of the link to the left node's "nextNodes" list
     sends.at(firstNode).push_back(nodes.at(secondNode)->getID());       // update sends list
 
 }
@@ -111,7 +105,6 @@ void AudioEngine::topologicalSortNodes() {
     std::map<NodeID, int> indegree;
     std::queue<NodeID> q;
     vector<NodeID> list;
-
 
     // Compute indegrees
     for (auto& outs : adj) {
@@ -152,22 +145,21 @@ void AudioEngine::topologicalSortNodes() {
 
 void AudioEngine::deleteLink(LinkID linkID) {
 
-
     NodeID leftNode = m_PinNodePairs.at(links.at(linkID).ID_left.Get());
     NodeID rightNode = m_PinNodePairs.at(links.at(linkID).ID_right.Get());
 
-
-    std::vector<NodeID>& conns = sends.at(leftNode);
+    std::vector<NodeID>& conns = sends.at(leftNode);        // delete connection for left node from sends list
 
     for (std::vector<NodeID>::iterator it = conns.begin(); it != conns.end();)
     {
-        if (*it == rightNode)
+        if (*it == rightNode) {
             it = conns.erase(it);
-        else
+        } else {
             ++it;
+        }
     }
 
-   // sends.at(leftNode).erase(it);
+    nodes.at(leftNode)->nextNodes.erase(rightNode);
     links.erase(linkID);
 
     topologicalSortNodes();
@@ -179,6 +171,8 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     NodeID blockID = getNewID(Identifier::node);
     PinID pinID = getNewID(Identifier::pin);
     nodes[blockID] = make_unique<DeviceNode>(blockType, initDeviceName, blockID);        // add new block
+
+    std::unique_lock<std::mutex> lock(nodeLock);
 
     if(blockType == BlockType::InputDevice)
         nodes[blockID]->addPin(pinID, pinType::output);        // add 1 pin for each device. input or output is decided by node type   
@@ -210,6 +204,9 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
     PinID inputPinID = getNewID(Identifier::pin);
     PinID outputPinID = getNewID(Identifier::pin);
 
+
+    std::unique_lock<std::mutex> lock(nodeLock);
+
     switch (typeOfEffect)
     {
     case EffectType::Filter:
@@ -238,65 +235,61 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
     return blockID;
 }
 
-void AudioEngine::deleteDSPNode(NodeID blockID) {
 
-    if (!nodes.contains(blockID)) {
+void AudioEngine::deleteNode(NodeID nodeToDelete) {
+
+    if (!nodes.contains(nodeToDelete)) {
         Logger::log("Invalid Device queued for deletion", level_ERROR);
         return;
     }
 
+    BlockType type = nodes.at(nodeToDelete)->getBlockType();
+    AudioNode* nodePointer = nodes.at(nodeToDelete).get();
     vector<LinkID> linksToDelete;
+    std::unique_lock<std::mutex> lock(nodeLock);
 
-    // Break all connected links
-    if (node::HasAnyLinks((node::NodeId)blockID)) {
-        for (auto& toDelete : links) {
 
-            if (nodes[blockID]->hasPin(toDelete.second.ID_left.Get()) != pinType::null ||        // ONLY WORKS FOR DEVICES WITH 1 PIN RIGHT NOW !!
-                nodes[blockID]->hasPin(toDelete.second.ID_right.Get()) != pinType::null) {
-                linksToDelete.push_back(toDelete.first);
+    // Break all connected links, including sends list and nextNodes list
+    if (node::HasAnyLinks((node::NodeId)nodeToDelete)) {
+        for (auto& [linkID,toDelete] : links) {
+            if (nodePointer->hasPin(toDelete.ID_left.Get()) != pinType::null ||
+                nodePointer->hasPin(toDelete.ID_right.Get()) != pinType::null) {
+                linksToDelete.push_back(linkID);
             }
         }
-
         for (auto& linkID : linksToDelete)   // so it doesn't crash mid-for loop
-            links.erase(linkID);
+            deleteLink(linkID);              // also removes left->nextNodes[right] & sends[left][it(right)] 
     }
 
-    nodes.erase(blockID);
-    sends.erase(blockID);
-
-}
-
-void AudioEngine::deleteDeviceNode(NodeID deviceID) {
-
-
-    if (!nodes.contains(deviceID)) {
-        Logger::log("Invalid Device queued for deletion", level_ERROR);
-        return;
+    switch (type)
+    {
+    case BlockType::NullDevice:
+        break;
+    case BlockType::InputDevice:
+        m_PinNodePairs.erase(nodePointer->outputPin);
+        fifoLevels.erase(nodeToDelete);
+        break;
+    case BlockType::OutputDevice:     
+        m_PinNodePairs.erase(nodePointer->inputPin);
+        fifoLevels.erase(nodeToDelete);
+        break;
+    case BlockType::DSP:
+        m_PinNodePairs.erase(nodePointer->inputPin);
+        m_PinNodePairs.erase(nodePointer->outputPin);
+        break;
+    case BlockType::FileInput:
+        break;
+    default:
+        break;
     }
 
-    vector<LinkID> linksToDelete;
+    sends.erase(nodeToDelete);
+    nodes.erase(nodeToDelete);
 
-    // Break all connected links
-    if (node::HasAnyLinks((node::NodeId)deviceID)) {
-        for (auto& toDelete : links) {
+    topologicalSortNodes();     // to update nodecount of sortedNodes
 
-            if (nodes[deviceID]->hasPin(toDelete.second.ID_left.Get()) != pinType::null ||        // ONLY WORKS FOR DEVICES WITH 1 PIN RIGHT NOW !!
-                nodes[deviceID]->hasPin(toDelete.second.ID_right.Get()) != pinType::null) {
-                
-                linksToDelete.push_back(toDelete.first);
-            }
-        }
-
-        for(auto& linkID : linksToDelete)   // so it doesn't crash mid-for loop
-            links.erase(linkID);
-    }
-
-
-    nodes.erase(deviceID);
-    fifoLevels.erase(deviceID);
-    sends.erase(deviceID);
-
-}
+    
+}   // releases mtx
 
 void AudioEngine::changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput) {
 

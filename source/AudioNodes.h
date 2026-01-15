@@ -9,14 +9,14 @@ class AudioNode {
 public:
 
 	AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
-
+	virtual ~AudioNode() = default;
 	NodeID ID;
 	juce::String Name;
 	BlockType m_blockType;
 	
 	PinID inputPin;
 	PinID outputPin;
-	vector<AudioNode*> nextNodes;
+	std::map<NodeID,AudioNode*> nextNodes;
 	
 	double sampleRate = 48000;
 	int blockSize = BLOCKSIZE;
@@ -42,18 +42,14 @@ public:
 	virtual void prepareOutput() = 0;		// can only run if all it's inputs have been mixed into its inputbuffer
 	void sendAudioToNextNodes();
 	static void mixInto(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src);
-
+	static void copyBuffer(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src);
 	bool isInput() const { return (m_blockType == BlockType::InputDevice); }
 	bool isOutput() const { return (m_blockType == BlockType::OutputDevice); }
 	bool isDSP() const { return (m_blockType == BlockType::DSP); }
-protected:
-	virtual void render() = 0;
-	
-	
 
-	// if dsp, already done
-	// if input hw, read from hardware fifo to outputBuffer
-	// if output, 
+	virtual void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) = 0;
+protected:
+	
 };
 
 

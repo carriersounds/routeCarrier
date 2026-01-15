@@ -10,7 +10,7 @@ class VisualizerNode : public AudioNode
 public:
     VisualizerNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 
-    ~VisualizerNode(){
+    ~VisualizerNode() {
 
     }
 

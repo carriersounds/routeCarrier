@@ -19,8 +19,8 @@ AudioNode::AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID no
 
 void AudioNode::sendAudioToNextNodes() {
 
-    for (AudioNode* next : nextNodes) {
-        mixInto(&next->inputBuffer, &outputBuffer);
+    for (auto& [nextID, nextNode] : nextNodes) {
+        mixInto(&nextNode->inputBuffer, &outputBuffer);
     }
 }
 
@@ -44,4 +44,12 @@ void AudioNode::mixInto(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<
         // ADD GAIN !!
 
     }
+}
+
+void AudioNode::copyBuffer(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src)
+{
+    jassert(dest->getNumChannels() == src->getNumChannels());
+    jassert(dest->getNumSamples() == src->getNumSamples());
+
+    dest->makeCopyOf(*src, false);
 }

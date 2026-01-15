@@ -10,7 +10,7 @@ class DeviceNode : public juce::AudioIODeviceCallback, public AudioNode
 public:
     DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 
-    ~DeviceNode(){
+    ~DeviceNode() override {
         deviceManager.removeAudioCallback(this);
         deviceManager.closeAudioDevice();
     }
@@ -23,9 +23,9 @@ public:
 
     juce::AudioIODevice* devicePointer;
     juce::AudioDeviceManager deviceManager;                                              
-    juce::WaitableEvent* trigger;           // to signal that
+    juce::WaitableEvent* trigger;           // to signal that new audio is needed
 
-    void render() override;
+    void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) override;
 
     void initDSP(double sr, int bs);
 

@@ -30,10 +30,8 @@ class DSPNode: public AudioNode, public juce::AudioProcessor
 {
 public:
 
-
-
     DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
-
+    ~DSPNode(){}
     //================ AudioProcessor ====================
     void prepareOutput() override { process(); }
     void process();
@@ -42,7 +40,7 @@ public:
 
     // ================ Configuration =====================
 
-    void render() override;               // render name & i/o pins
+    void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) override;           // render name & i/o pins
     virtual void renderInterface() = 0;     // render actual effect interface / params, should be contained in main render function
 
     virtual EffectType getType() = 0;                                       // used by GUI for parameter management

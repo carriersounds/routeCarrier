@@ -38,8 +38,65 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
     deviceManager.addAudioCallback(this);       // HERE it auto-calls "aboutToStart"
 }
  
-void DeviceNode::render() {
+void DeviceNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
 
+    // Draw input Nodes
+    
+    if (isInput()){
+
+        // ============== TITLE ==============
+        node::BeginNode(ID);
+        ImGui::Text(getBlockName().c_str());
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
+        ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
+        ImGui::Dummy(ImVec2(0, 6));
+        ImGui::NewLine();
+
+        // ============== OUTPUT PIN ==============        
+        const char* labelout = "FROM DEVICE        ";
+        ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
+
+        // Move cursor to the right edge,
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + spacing + w - (textSizeOut.x)); // to counter the 2 spacings for W
+        node::BeginPin(outputPin, ed::PinKind::Output);
+        ImGui::TextUnformatted(labelout);
+        ImGui::SameLine();
+
+        // Pin icon
+        ImDrawList* dlo = ImGui::GetWindowDrawList();
+        ImVec2 poso = ImGui::GetCursorScreenPos();
+        poso.x = poso.x - textSizeOut.y - spacing;      // textSizeOut.y = circle width(spacing)
+        dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f), textSizeOut.y * 0.5f, IM_COL32(250, 150, 30, 255));
+        node::EndPin();
+        node::EndNode();
+    }
+    else if(isOutput())     // Draw output Node
+    {
+        
+        // ============== TITLE ==============
+        node::BeginNode(ID);
+        ImGui::Text(getBlockName().c_str());
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
+        ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
+        ImGui::Dummy(ImVec2(0, 6)); // spacing after divider
+        ImGui::NewLine();
+        
+        // ============== INPUT PIN ==============
+        const char* labelin = "    TO DEVICE";
+        ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
+        node::BeginPin(inputPin, ed::PinKind::Input);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 2 * spacing);
+        
+        // Pin icon  
+        ImDrawList* dli = ImGui::GetWindowDrawList();
+        ImVec2 posi = ImGui::GetCursorScreenPos();
+        dli->AddCircleFilled(ImVec2(posi.x, posi.y + textSizeIn.y * 0.5f), textSizeIn.y * 0.5f, IM_COL32(30, 150, 230, 255));
+        ImGui::TextUnformatted(labelin);
+        node::EndPin();
+        node::EndNode();
+    }
 }
 
 void DeviceNode::selectDevice(const juce::String& nameToFind, bool isOutput)
@@ -155,7 +212,7 @@ void DeviceNode::prepareOutput() {
         writeToFifoFrom(inputBuffer.getArrayOfReadPointers(), BLOCKSIZE);
     }
 
-    // if output, actually send to HW, since these will always be last after sorting
+    // if output, actually send to hardware, since these will always be last after sorting
 }
 
 void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)

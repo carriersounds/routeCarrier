@@ -4,7 +4,7 @@
 #include <JuceHeader.h>
 #include "AudioDSPNode.h"
 
-enum class filterType {
+enum class FilterType {
     lowPass,
     highPass,
     bandPass,
@@ -19,26 +19,33 @@ class EqualizerNode final : public DSPNode
 public:
     EqualizerNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID) {
 
+        X_frequencies.resize(500);
+        Y_responseDB.resize(500);   // EQ graph
+
         *(EQ.get<0>().state) = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, 100);
-        *(EQ.get<1>().state) = *juce::dsp::IIR::Coefficients<float>::makeNotch(48000.0, 200);
-        *(EQ.get<2>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 300,0.7,4);        // = EQ Node
-        *(EQ.get<3>().state) = *juce::dsp::IIR::Coefficients<float>::makeHighPass(48000.0, 600);
+        *(EQ.get<1>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 500, 0.7, -4);
+        *(EQ.get<2>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 3000,0.7,4);        // = EQ Node
+        *(EQ.get<3>().state) = *juce::dsp::IIR::Coefficients<float>::makeHighPass(48000.0, 10000);
  
     }
+
+
+    void getMagnetudeCurve();
+
+    std::vector<float> X_frequencies;
+    std::vector<float> Y_responseDB;
 
 
 protected:
     EffectType getType() { return EffectType::EQ; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { EQ.reset(); EQ.prepare(spec); }
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
-
     void renderInterface() override;
 
 private:
     using Filter = juce::dsp::IIR::Filter<float>;
     using Coeffs = juce::dsp::IIR::Coefficients<float>;
     using fullFilter = juce::dsp::ProcessorDuplicator<Filter, Coeffs>;
-
     juce::dsp::ProcessorChain<fullFilter, fullFilter, fullFilter, fullFilter> EQ;
 };
 
@@ -50,13 +57,14 @@ public:
 
         cutoffHz = 200.0f;
         resonance = 0.7f;
+        filterType = 0;
         *filter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, cutoffHz);
     }
 
     // ===== Parameters =====
     float cutoffHz{ 200.0f };
     float resonance{ 0.7f };
-    int filterType;
+    int filterType{ 0 };
 
 protected: 
     EffectType getType() { return EffectType::Filter; }
@@ -71,7 +79,6 @@ private:
     juce::dsp::ProcessorDuplicator<Filter, Coeffs> filter;
 
 };
-
 
 class GainNode final : public DSPNode
 {

@@ -63,15 +63,14 @@ public:
 
 
     node::EditorContext* node_Context;
+    string grabbedDevice;
+    BlockType grabbedType;
 
     // Images and heavy graphics
     int imageToRender = viewMode::normal;
-
-    vector<float> histogramContent;                           
+                        
     string currentLoadedFile = "";
     std::mutex guiMutex;
-
-
 private:
     Program* prog;
     ImGuiIO* io;

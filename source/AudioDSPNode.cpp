@@ -12,7 +12,6 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 
     node::BeginNode(ID);
 
-
     // ============== TITLE ==============  
     ImGui::Text(getBlockName().c_str());
     ImVec2 p = ImGui::GetCursorScreenPos();
@@ -43,8 +42,13 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
     ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
     ImGui::SameLine();
 
-    // Move cursor to the right edge,
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node::GetNodeSize(ID).x - (textSizeOut.x + spacing + 53.0f));     // precise offset 
+    // Move cursor to the right edge.. different in debug/release for some reason
+    float preciseOffset = 55.0f;
+#ifdef DEBUG
+    preciseOffset = 53.0f
+#endif // DEBUG
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node::GetNodeSize(ID).x - (textSizeOut.x + spacing + preciseOffset));     // precise offset 
     node::BeginPin(outputPin, ed::PinKind::Output);
     ImGui::TextUnformatted(labelout);
     ImGui::SameLine();
@@ -52,7 +56,7 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
     // Output Pin icon
     ImDrawList* dlo = ImGui::GetWindowDrawList();
     ImVec2 poso = ImGui::GetCursorScreenPos() + ImVec2(spacing, 0);
-    poso.x = poso.x - textSizeOut.y - spacing;      // textSizeOut.y = circle width(spacing)
+    poso.x = poso.x - textSizeOut.y - spacing;
     dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f), textSizeOut.y * 0.5f, IM_COL32(250, 150, 30, 255));
     node::EndPin();
 

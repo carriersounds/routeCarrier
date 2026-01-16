@@ -315,7 +315,7 @@ void AudioEngine::selectMainOutput(NodeID nodeID) {
     DeviceNode* devptr;
 
     for (auto& [id, device] : nodes) {
-        devptr = dynamic_cast<DeviceNode*>(device.get());
+        if(devptr = dynamic_cast<DeviceNode*>(device.get()))
         devptr->setAsMainOutput(false);
     }
 

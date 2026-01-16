@@ -35,7 +35,7 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
  
 void DeviceNode::renderAsNode(float pinSize, float spacing) {
 
-            // Draw input Node
+         // Draw input Node
     
          // ============== TITLE ==============
     node::BeginNode(ID);

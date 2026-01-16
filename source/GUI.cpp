@@ -243,12 +243,12 @@ void GUI::setCustomStyle()
     style.WindowMinSize = ImVec2(20.0f, 20.0f);
     style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
     style.WindowMenuButtonPosition = ImGuiDir_None;
-    style.ChildRounding = 20.0f;
+    style.ChildRounding = 10.0f;
     style.ChildBorderSize = 1.0f;
-    style.PopupRounding = 17.4f;
+    style.PopupRounding = 10.4f;
     style.PopupBorderSize = 1.0f;
     style.FramePadding = ImVec2(20.0f, 3.4f);
-    style.FrameRounding = 11.9f;
+    style.FrameRounding = 4.0f;
     style.FrameBorderSize = 0.0f;
     style.ItemSpacing = ImVec2(5.9f, 5.4f);
     style.ItemInnerSpacing = ImVec2(7.1f, 1.8f);
@@ -258,8 +258,8 @@ void GUI::setCustomStyle()
     style.ScrollbarSize = 1.6f;
     style.ScrollbarRounding = 5.9f;
     style.GrabMinSize = 3.7f;
-    style.GrabRounding = 20.0f;
-    style.TabRounding = 9.8f;
+    style.GrabRounding = 10.0f;
+    style.TabRounding = 4.8f;
     style.TabBorderSize = 0.0f;
 
    // style.TabMinWidthForCloseButton = 0.0f;
@@ -304,7 +304,7 @@ void GUI::setCustomStyle()
     style.Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.03137255f, 0.9490196f, 0.84313726f, 1.0f);
     style.Colors[ImGuiCol_ResizeGripActive] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_Tab] = ImVec4(0.078431375f, 0.08627451f, 0.101960786f, 1.0f);
-    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.11764706f, 0.13333334f, 0.14901961f, 1.0f);
+    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.31764706f, 0.33333334f, 0.39901961f, 1.0f);
     style.Colors[ImGuiCol_TabActive] = ImVec4(0.11764706f, 0.13333334f, 0.14901961f, 1.0f);
     style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.078431375f, 0.08627451f, 0.101960786f, 1.0f);
     style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.1254902f, 0.27450982f, 0.57254905f, 1.0f);
@@ -339,8 +339,8 @@ void GUI::renderAllModules() {
     renderMainDockSpace();
     
     renderMixPanel();
+  //  renderDeviceList();
     renderToolbar();
-    renderDeviceList();
     renderMenuBar();
     renderLog();
  
@@ -594,18 +594,15 @@ void GUI::renderLog()
 void GUI::renderToolbar() {
 
     ImGui::Begin("Toolbar");
- 
     /*
     Drag & Drop toolbar.
     You can either press a Button to add it at a "default" position
     Drag the Button onto the graph to place it at a specific location       
     */
 
-    // big think over hoe ik device names vanaf hier naar de receiver ga krijgen
-
     DragDropBlock dropper = DragDropBlock::None;
 
-
+    ImGui::SeparatorText("Audio Effects");
 
     if(ImGui::Button("FILTER", { 180,80 }))prog->audio.addNewDSPNode(EffectType::Filter);
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
@@ -617,6 +614,7 @@ void GUI::renderToolbar() {
 
     }
 
+    ImGui::SameLine();
     if(ImGui::Button("GAIN", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Gain);
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
     {
@@ -626,8 +624,7 @@ void GUI::renderToolbar() {
         ImGui::EndDragDropSource();
 
     }
-    
-   
+      
     if (ImGui::Button("REVERB", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Reverb);
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
     {
@@ -638,6 +635,7 @@ void GUI::renderToolbar() {
 
     }
 
+    ImGui::SameLine();
     if (ImGui::Button("EQ 4", { 180,80 })) prog->audio.addNewDSPNode(EffectType::EQ);
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
     {
@@ -648,6 +646,70 @@ void GUI::renderToolbar() {
 
     }
 
+    ImGui::NewLine();
+    ImGui::NewLine();
+
+    static auto& deviceTypes = prog->audio.nullDevice.deviceManager.getAvailableDeviceTypes();
+    static juce::AudioIODeviceType* type = deviceTypes.getFirst();                                      // takes WASAPI, maybe check for Low Latency?
+
+    static juce::StringArray inputs;
+    static juce::StringArray outputs;
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.11f, 0.23f, 0.34f, 0.3f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.11f, 0.43f, 0.54f, 1.0f));
+
+    // update audio device list every 2 seconds or on a button press
+    if ((ImGui::GetFrameCount() % 120) == 0) {
+        type->scanForDevices();                 // must call to populate names
+        inputs = type->getDeviceNames(true);    // true = input
+        outputs = type->getDeviceNames(false);  // false = output
+    }
+
+
+    ImGui::SeparatorText("Input Devices");
+    ImGui::NewLine();
+
+    for (auto& s : inputs) {
+        if (ImGui::Button(("IN: " + s.toStdString()).c_str())) {
+            juce::String chosenInput(s);
+            prog->audio.addNewDeviceNode(BlockType::InputDevice, chosenInput);
+        }
+
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+        {
+            dropper = DragDropBlock::Device;
+            // triggers only on 1st button click
+            ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+            ImGui::EndDragDropSource();
+            grabbedType = BlockType::InputDevice;
+            grabbedDevice = s.toStdString();
+        }
+
+
+    }
+
+   
+    ImGui::NewLine();
+    ImGui::SeparatorText("Output Devices");
+    ImGui::NewLine();
+    for (auto& s : outputs) {
+        if (ImGui::Button(("OUT: " + s.toStdString()).c_str())) {
+            juce::String chosenOutput(s);
+            NodeID next_ID = prog->audio.addNewDeviceNode(BlockType::OutputDevice, chosenOutput);
+        }
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+        {
+            dropper = DragDropBlock::Device;
+            // triggers only on 1st button click
+            ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+            ImGui::EndDragDropSource();
+            grabbedType = BlockType::OutputDevice;
+            grabbedDevice = s.toStdString();
+        }
+    }
+    
+
+    ImGui::PopStyleColor(2);
 
     ImGui::End();
 
@@ -666,11 +728,15 @@ void GUI::renderMixPanel() {
 
     ImGui::Begin("Mixing Panel", &showMixer, ImGuiWindowFlags_NoNavInputs);
    
-    if (ImGui::Button("Find Nodes", { 60,40 })) {      
+    if (ImGui::Button("Find Nodes")) {      
         io.UserData = &menuOpen;  // random static memory which is not nullptr
     } else {
         io.UserData = nullptr;  // only thing usable to talk to the inner node function to override the F key zoom
     }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("TOGGLE AUDIO")) prog->audio.enableRouting = !prog->audio.enableRouting;
 
     node::SetCurrentEditor(node_Context);
     node::Begin("editore", ImVec2(0.0, 0.0f));
@@ -689,7 +755,8 @@ void GUI::renderMixPanel() {
             switch (dragPayload)
             {
                 case GUI::DragDropBlock::Device:
-                    Logger::log("Unknown Effect", level_INFO);
+                    nodeToGiveInitPosition = prog->audio.addNewDeviceNode(grabbedType, grabbedDevice);
+                    Logger::log("Added Device: " + grabbedDevice, level_INFO);
                     break;
                 case GUI::DragDropBlock::Filter:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Filter);
@@ -838,7 +905,6 @@ void GUI::renderDeviceList() {
         if (ImGui::MenuItem(("OUT: " + s.toStdString()).c_str())) {
             juce::String chosenOutput(s);
             NodeID next_ID = prog->audio.addNewDeviceNode(BlockType::OutputDevice, chosenOutput);
-
 
         }
 

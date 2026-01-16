@@ -1,4 +1,7 @@
 ﻿#include "AudioEffects.h"
+#include "Logger.h"
+
+#define INDENT_NEXT ImGui::Dummy({ 10,10 }); ImGui::SameLine();
 
 //========= PROCESSING ===========
 void EqualizerNode::processDSP(juce::dsp::AudioBlock<float>& block) {
@@ -49,9 +52,12 @@ void ReverbNode::processDSP(juce::dsp::AudioBlock<float>& block) {
 
 
 //========= GRAPHICAL INTERFACE ===========
-void EqualizerNode::renderInterface(float NODE_WIDTH) {
+void EqualizerNode::renderInterface() {
 
-    ImPlot::BeginPlot("EQ GRAF", {NODE_WIDTH + 40,150},ImPlotFlags_CanvasOnly | ImPlotFlags_NoTitle);       // USE FULL WIDTH
+
+    ;
+
+    ImPlot::BeginPlot("EQ GRAF", {400,150},ImPlotFlags_CanvasOnly | ImPlotFlags_NoTitle);       // USE FULL WIDTH
 
     ImPlot::SetupAxisLimits(ImAxis_X1,10,20000, ImGuiCond_Always);
     ImPlot::SetupAxisLimits(ImAxis_Y1, -12, 12, ImGuiCond_Always);
@@ -72,42 +78,92 @@ void EqualizerNode::renderInterface(float NODE_WIDTH) {
     }
 
     ImPlot::PlotLine("zinus", Xlogfreqs, Yvalues, 80);
-    
+   
+
     ImPlot::EndPlot();
 
 }
 
-void FilterNode::renderInterface(float NODE_WIDTH) {
+void FilterNode::renderInterface() {
 
-    ImGui::PushItemWidth(NODE_WIDTH - 40);
+    if (ImGui::BeginTable("f_tab", 3, ImGuiTableFlags_BordersInner , {300,100})) {
 
-    if(ImGui_InvertedFloatSlider("Freq", cutoffHz, 20.0f, 20000.0f, " % .1f Hz", ImGuiSliderFlags_Logarithmic))parameterChanged.store(true);
-      
-    ImGui::Dummy(ImVec2(0, 6.0f));  // ROW SPACING
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
 
-    if(ImGui_InvertedFloatSlider("Reso", resonance, 0.1, 20)) parameterChanged.store(true);
+        INDENT_NEXT
+
+        if (ImGuiKnobs::Knob("Freq", &cutoffHz, 20.0f, 20000, 0.0f, "%.1f Hz", ImGuiKnobVariant_WiperOnly, 0.0f, ImGuiKnobFlags_Logarithmic)) {
+            parameterChanged.store(true);
+        }
+
+        ImGui::TableNextColumn();
+
+        INDENT_NEXT
         
-    ImGui::PopItemWidth();
-}
+        if (ImGuiKnobs::Knob("Reso", &resonance, 0.1f, 20.0f, 0.0f, "%.1f", ImGuiKnobVariant_WiperOnly)) {
+            parameterChanged.store(true);
+        }
 
-void GainNode::renderInterface(float NODE_WIDTH) {
-    ImGui::PushItemWidth(NODE_WIDTH - 40);
-    if(ImGui_InvertedFloatSlider("Gain", gainValueDB, -60, 36)) parameterChanged.store(true);
-    ImGui::PopItemWidth();
-}
+        ImGui::TableNextColumn();
 
-void ReverbNode::renderInterface(float NODE_WIDTH) {
-  
-    ImGui::PushItemWidth(NODE_WIDTH - 40);
+        static int selected = 0;
+        const char* typelabels[3] = { "Lowpass", "HighPass", "Bandpass" };
+        INDENT_NEXT
+        ImGui::Text("Filter Type");
 
-    if (ImGui_InvertedFloatSlider("roomSize", roomSize, 0, 1)|| 
-        ImGui_InvertedFloatSlider("damping", damping, 0, 1)  ||
-        ImGui_InvertedFloatSlider("wetLevel", wetLevel, 0, 1)||
-        ImGui_InvertedFloatSlider("dryLevel", dryLevel, 0, 1)||
-        ImGui_InvertedFloatSlider("width", width, 0, 1)      ||
-        ImGui_InvertedFloatSlider("freeze", freezeMode, 0, 1)) {
-        parameterChanged.store(true);
+        INDENT_NEXT
+        ImGui::Separator();
+
+        for (int i = 0; i < IM_ARRAYSIZE(typelabels); i++)
+        {
+            INDENT_NEXT
+            if (ImGui::Selectable(typelabels[i], selected == i))
+                selected = i;
+        }
+
+        ImGui::SameLine();
+        ImGui::Dummy({ 20,20 });
+       // INDENT_NEXT
+
+        ImGui::EndTable();
     }
-    ImGui::PopItemWidth();
+}
+
+void GainNode::renderInterface() {
+
+
+    ImGui::Dummy({ 20,30 });
+    ImGui::SameLine();
+
+    if(ImGuiKnobs::Knob("Gain", &gainValueDB, -60, 36, 0.0f, "%.1f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+
+    ImGui::SameLine();
+    ImGui::Dummy({ 20,30 });
+   
+
+}
+
+void ReverbNode::renderInterface() {
+  
+    bool isChanged = false;   
+
+    if(ImGuiKnobs::Knob("Size", &roomSize, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+    ImGui::SameLine();
+    if(ImGuiKnobs::Knob("Damping", &damping, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+    ImGui::SameLine();
+    if(ImGuiKnobs::Knob("Width", &width, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+    ImGui::SameLine();
+    if(ImGuiKnobs::Knob("Hold", &freezeMode, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+    ImGui::GetWindowDrawList()->AddLine(ImGui::GetCursorScreenPos(), (ImGui::GetCursorScreenPos() + ImVec2(270, 0)), IM_COL32(120, 120, 120, 255));
+    ImGui::NewLine();
+    ImGui::Dummy({ 132,20 });
+    ImGui::SameLine(); 
+    if(ImGuiKnobs::Knob("Dry Level", &dryLevel, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+    ImGui::SameLine();
+    if(ImGuiKnobs::Knob("Wet Level", &wetLevel, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+
+    if(isChanged)
+    parameterChanged.store(true);
 
 }

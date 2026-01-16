@@ -8,13 +8,10 @@ DSPNode::DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID
 
 }
 
-void DSPNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
+void DSPNode::renderAsNode(float pinSize, float spacing) {
 
     node::BeginNode(ID);
 
-    if (getType() == EffectType::EQ) {
-        NODE_WIDTH = 400;
-    }
 
     // ============== TITLE ==============  
     ImGui::Text(getBlockName().c_str());
@@ -23,11 +20,10 @@ void DSPNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
     ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
     ImGui::Dummy(ImVec2(0, 6));
 
-
-    // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX =====       
-    renderInterface(NODE_WIDTH);
+    // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX =====
+ 
+    renderInterface();     
     ImGui::NewLine();
-
 
     // ============== INPUT PIN ============== 
     const char* labelin = "    IN";
@@ -48,14 +44,14 @@ void DSPNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
     ImGui::SameLine();
 
     // Move cursor to the right edge,
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + NODE_WIDTH - (textSizeOut.x + spacing));
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node::GetNodeSize(ID).x - (textSizeOut.x + spacing + 53.0f));     // precise offset 
     node::BeginPin(outputPin, ed::PinKind::Output);
     ImGui::TextUnformatted(labelout);
     ImGui::SameLine();
 
     // Output Pin icon
     ImDrawList* dlo = ImGui::GetWindowDrawList();
-    ImVec2 poso = ImGui::GetCursorScreenPos();
+    ImVec2 poso = ImGui::GetCursorScreenPos() + ImVec2(spacing, 0);
     poso.x = poso.x - textSizeOut.y - spacing;      // textSizeOut.y = circle width(spacing)
     dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f), textSizeOut.y * 0.5f, IM_COL32(250, 150, 30, 255));
     node::EndPin();

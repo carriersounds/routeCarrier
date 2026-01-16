@@ -14,7 +14,11 @@ public:
 
     }
 
+    // SCOPE :D
 
+
+    void prepareOutput() override {};
+    void renderAsNode(float pinSize, float spacing) override {};
 
 };
 

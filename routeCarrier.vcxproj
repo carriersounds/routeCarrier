@@ -158,6 +158,7 @@
     <ClCompile Include="source\AudioVisualizerNode.cpp" />
     <ClCompile Include="source\FileIO.cpp" />
     <ClCompile Include="source\GUI.cpp" />
+    <ClCompile Include="source\imgui\imgui-knobs.cpp" />
     <ClCompile Include="source\imgui\imgui.cpp" />
     <ClCompile Include="source\imgui\imgui_demo.cpp" />
     <ClCompile Include="source\imgui\imgui_draw.cpp" />
@@ -202,6 +203,7 @@
     <ClInclude Include="source\FileIO.h" />
     <ClInclude Include="source\GUI.h" />
     <ClInclude Include="source\imgui\imconfig.h" />
+    <ClInclude Include="source\imgui\imgui-knobs.h" />
     <ClInclude Include="source\imgui\imgui.h" />
     <ClInclude Include="source\imgui\imgui_impl_dx11.h" />
     <ClInclude Include="source\imgui\imgui_impl_win32.h" />

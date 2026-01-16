@@ -91,6 +91,8 @@ private:
     void renderLog();
     void renderFIFOState();
 
+    void setCustomStyle();
+
     static void drawGradientBackground(ImDrawList* drwList, const char* label, ImRect bb, bool button, bool pressed = false, bool hovered = false);
     static void drawAnalogDial_3sections(const char* name, float ranges[], float value, ImVec2 plotSize, bool reverseColors);
     static void drawAnalogDial_5sections(const char* name, float ranges[], float value, ImVec2 plotSize);                    // aiming at the middle

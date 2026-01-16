@@ -15,15 +15,15 @@ class Program;
 TODO:
 - BUG: multiple outputs will still drift -> small crackling will build up
 - Actual sample rate conversion
-- CHECK FOR FEEDBACK LOOPS: any output to connect: disable all inputs "before" this signal chain, so it can't even be created (this maintains the non-loopness)
 - proper fifo management
 - Create full channel strip, modular effects, working effects, processdoubler?
     + filters (low / band / hi)
     + gain
-    - EQ
+    + EQ
     - compressor
-    - reverb
+    + reverb
     - saturation tanh() / digClip / sinefold
+    - simple channel strip
     - waveform visualizer per link
 - drag link up/down to set gain for that copy stage, buffer write operations = gain included always
 

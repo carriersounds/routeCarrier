@@ -39,6 +39,7 @@
 #include "implot\implot.h"
 #include "implot\implot_internal.h"
 #include "imgui_node_editor.h"
+#include "imgui-knobs.h"
 
 
 namespace ed = ax::NodeEditor;
@@ -47,8 +48,6 @@ namespace node = ax::NodeEditor;
 #define BLOCKSIZE 512
 #define FIFOSIZE 2048
 
-
-//#include <winsock2.h>               // had to be included after imgui for some reason
 #pragma comment(lib, "Ws2_32.lib")
 
 using std::vector;
@@ -72,6 +71,7 @@ typedef size_t ParamID;
 
 using std::unique_ptr;
 using std::make_unique;
+
 
 
 enum class ParamType {
@@ -124,7 +124,6 @@ enum class blockModifier {
     remove
 };
 
-
 enum autoSaveModifiers {
     save_all = -1,
     save_defects = 1,
@@ -164,7 +163,6 @@ enum FileIOFlags {
     f_image = 7,
     f_settings = 8
 };
-
 
 struct iconData {
     string name;

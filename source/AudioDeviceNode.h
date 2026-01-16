@@ -26,7 +26,7 @@ public:
     juce::WaitableEvent* trigger;           // to signal that new audio is needed
     juce::WaitableEvent* trigAddress;
 
-    void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) override;
+    void renderAsNode(float pinSize, float spacing) override;
 
     void initDSP(double sr, int bs);
 

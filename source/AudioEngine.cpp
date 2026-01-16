@@ -54,7 +54,7 @@ BaseID AudioEngine::getNewID(Identifier type) {
     if (type == Identifier::node) idtype = "node";
     if (type == Identifier::pin)  idtype = "pin";
 
-   //  Logger::log("new " + idtype +" ID: " + to_string(uniqueID), level_DEBUG);
+   Logger::log("new " + idtype +", ID: " + to_string(uniqueID), level_DEBUG);
 
     return uniqueID;
 }
@@ -64,10 +64,14 @@ void AudioEngine::createLink(node::PinId leftPin, node::PinId rightPin) {
     LinkID nextID = getNewID(Identifier::link);
     links.emplace(nextID, BlockLink(nextID, leftPin, rightPin));
 
-
     calculateSends(nextID);
     topologicalSortNodes();
 
+
+    // Detect feedback loops, will call toposort again if detected
+    if (sortedNodes.size() != nodes.size()) {
+        deleteLink(nextID);
+    }
 }
 
 void AudioEngine::calculateSends(LinkID newlink) {
@@ -91,7 +95,7 @@ void AudioEngine::calculateSends(LinkID newlink) {
     }
  
     nodes.at(firstNode)->nextNodes.emplace(secondNode,nodes[secondNode].get());     // add the node right of the link to the left node's "nextNodes" list
-    sends.at(firstNode).push_back(nodes.at(secondNode)->getID());       // update sends list
+    sends.at(firstNode).push_back(nodes.at(secondNode)->getID());                   // update sends list
 
 }
 
@@ -124,21 +128,12 @@ void AudioEngine::topologicalSortNodes() {
 
         for (auto& nextID : adj[top]) {
             indegree[nextID]--;
-            if (indegree[nextID] == 0)
+            if (indegree[nextID] == 0)      // nodes involved in feedback loops will never reach degree zero and will not be added to sortedNodes
                 q.push(nextID);
         }
-    }
-    // nodes involved in cycles will never reach degree zero
-
+    } 
+   
     sortedNodes = list;
-
-
-    // calculate adjacent nodes
-
-    // then sort and push to sortedNodes
-
-
-
 }
 
 void AudioEngine::deleteLink(LinkID linkID) {
@@ -151,21 +146,20 @@ void AudioEngine::deleteLink(LinkID linkID) {
     for (std::vector<NodeID>::iterator it = conns.begin(); it != conns.end();)
     {
         if (*it == rightNode) {
-            it = conns.erase(it);
+            it = conns.erase(it);                       
         } else {
-            ++it;
+            ++it;   // stolen from cppreference
         }
     }
 
     nodes.at(leftNode)->nextNodes.erase(rightNode);         // also delete device pointer from "nextNodes" list
-    links.erase(linkID);
+    links.erase(linkID);                                    // finally, delete actual link
 
     topologicalSortNodes();
 }
 
-// Break all connected links, including sends list and nextNodes list
 void AudioEngine::breakAllLinks(NodeID node){
-
+    // Break all connected links, including sends list and nextNodes list
     AudioNode* nodePointer = nodes.at(node).get();
     vector<LinkID> linksToDelete;
     std::unique_lock<std::mutex> lock(nodeLock);

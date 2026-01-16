@@ -34,7 +34,7 @@ public:
 	void sendAudioToNextNodes();
 
 	// GUI
-	virtual void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) = 0;
+	virtual void renderAsNode(float pinSize, float spacing) = 0;
 
 	// Data
 	PinID inputPin;

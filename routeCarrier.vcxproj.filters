@@ -140,6 +140,9 @@
     <ClCompile Include="source\AudioVisualizerNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\imgui\imgui-knobs.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\GUI.h">
@@ -225,6 +228,9 @@
     </ClInclude>
     <ClInclude Include="source\AudioVisualizerNode.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\imgui\imgui-knobs.h">
+      <Filter>imgui</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

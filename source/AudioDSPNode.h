@@ -40,9 +40,9 @@ public:
 
     // ================ Configuration =====================
 
-    void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) override;           // render name & i/o pins
-    virtual void renderInterface(float NODE_WIDTH) = 0;     // render actual effect interface / params, should be contained in main render function
-
+    void renderAsNode(float pinSize, float spacing) override;           // render name & i/o pins
+    virtual void renderInterface() = 0;                    // render actual effect interface / params, should be contained in main render function
+                                                                            // float& : overrides "n
     virtual EffectType getType() = 0;                                       // used by GUI for parameter management
 
     const juce::String getName() const override { return "DSP Node"; }
@@ -73,6 +73,7 @@ private:
     void setStateInformation(const void*, int) override {}
 
 protected:
+
     //=========== IMPLEMENTED BY SPECIFIC DSP EFFECTS ===========
     virtual void prepareDSP(const juce::dsp::ProcessSpec&) = 0;
     virtual void processDSP(juce::dsp::AudioBlock<float>&) = 0;

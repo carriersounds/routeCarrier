@@ -6,8 +6,8 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
         hardwareBuffer(2, FIFOSIZE),
         AudioNode(blocktype,initDeviceName,nodeID),
         devicePointer(nullptr),
-        trigger(nullptr)
-    {
+        trigger(nullptr),trigAddress(nullptr)
+{
 
     juce::String err = deviceManager.initialise(
         m_blockType == BlockType::InputDevice ? 2 : 0,
@@ -33,7 +33,7 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
     deviceManager.addAudioCallback(this);       // HERE it auto-calls "aboutToStart"
 }
  
-void DeviceNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
+void DeviceNode::renderAsNode(float pinSize, float spacing) {
 
             // Draw input Node
     

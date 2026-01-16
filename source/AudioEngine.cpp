@@ -163,6 +163,25 @@ void AudioEngine::deleteLink(LinkID linkID) {
     topologicalSortNodes();
 }
 
+// Break all connected links, including sends list and nextNodes list
+void AudioEngine::breakAllLinks(NodeID node){
+
+    AudioNode* nodePointer = nodes.at(node).get();
+    vector<LinkID> linksToDelete;
+    std::unique_lock<std::mutex> lock(nodeLock);
+
+    if (node::HasAnyLinks((node::NodeId)node)) {
+        for (auto& [linkID, toDelete] : links) {
+            if (nodePointer->hasPin(toDelete.ID_left.Get()) != pinType::null ||
+                nodePointer->hasPin(toDelete.ID_right.Get()) != pinType::null) {
+                linksToDelete.push_back(linkID);
+            }
+        }
+        for (auto& linkID : linksToDelete)   // so it doesn't crash mid-for loop
+            deleteLink(linkID);              // also removes left->nextNodes[right] & sends[left][it(right)] 
+    }
+}
+
 NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDeviceName) {
 
     // create 2 new IDs. 1 for device, 1 for pin
@@ -186,12 +205,11 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
 
     DeviceNode* devptr = dynamic_cast<DeviceNode*>(nodes[blockID].get());
 
-  //  if (blockType == BlockType::InputDevice) inputBuffers.emplace(blockID,juce::AudioSampleBuffer(2, 512));        // add a buffer for any corresponding HW block
-  //  if (blockType == BlockType::OutputDevice) outputBuffers.emplace(blockID, juce::AudioSampleBuffer(2, 512));
-
-
-    if (devptr->getBlockType() == BlockType::OutputDevice)
-        devptr->setAsMainOutput(&requestNewAudioBlock);
+    if (devptr->getBlockType() == BlockType::OutputDevice) {
+        devptr->setTriggerAddress(&requestNewAudioBlock);
+        selectMainOutput(blockID);
+    }
+        
     
     return blockID;
 }
@@ -246,20 +264,10 @@ void AudioEngine::deleteNode(NodeID nodeToDelete) {
     BlockType type = nodes.at(nodeToDelete)->getBlockType();
     AudioNode* nodePointer = nodes.at(nodeToDelete).get();
     vector<LinkID> linksToDelete;
+
+    breakAllLinks(nodeToDelete);    // has its own mutex, but can be called separately
+
     std::unique_lock<std::mutex> lock(nodeLock);
-
-
-    // Break all connected links, including sends list and nextNodes list
-    if (node::HasAnyLinks((node::NodeId)nodeToDelete)) {
-        for (auto& [linkID,toDelete] : links) {
-            if (nodePointer->hasPin(toDelete.ID_left.Get()) != pinType::null ||
-                nodePointer->hasPin(toDelete.ID_right.Get()) != pinType::null) {
-                linksToDelete.push_back(linkID);
-            }
-        }
-        for (auto& linkID : linksToDelete)   // so it doesn't crash mid-for loop
-            deleteLink(linkID);              // also removes left->nextNodes[right] & sends[left][it(right)] 
-    }
 
     switch (type)
     {
@@ -293,9 +301,31 @@ void AudioEngine::deleteNode(NodeID nodeToDelete) {
 
 void AudioEngine::changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput) {
 
- //   if (nodes.contains(deviceID))
- //       nodes[deviceID]->selectDevice(nameToFind, isOutput);
- //   else
- //       Logger::log("Invalid audio device node selected", level_ERROR, source_AUDIO);
+    if (nodes.contains(deviceID)) {
+        if (nodes.at(deviceID)->isInput() || nodes.at(deviceID)->isOutput()) {
+            DeviceNode* devptr = dynamic_cast<DeviceNode*>(nodes.at(deviceID).get());
+            devptr->selectDevice(nameToFind, isOutput);
+        }        
+    } else
+        Logger::log("Invalid audio device selected", level_ERROR, source_AUDIO);
+
+}
+
+void AudioEngine::selectMainOutput(NodeID nodeID) {
+
+    if (!nodes.at(nodeID)->isOutput()) {
+        Logger::log("Invalid Device selected to set as main output", level_WARNING);
+        return;
+    }
+
+    DeviceNode* devptr;
+
+    for (auto& [id, device] : nodes) {
+        devptr = dynamic_cast<DeviceNode*>(device.get());
+        devptr->setAsMainOutput(false);
+    }
+
+    devptr = dynamic_cast<DeviceNode*>(nodes.at(nodeID).get());
+    devptr->setAsMainOutput(true);
 
 }

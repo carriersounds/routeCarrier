@@ -35,7 +35,7 @@ int GUI::imGuiSetup() {
 
     // 1900 x 1080 = full
     wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Route Carrier", nullptr }; ::RegisterClassExW(&wc);
-    hwnd = ::CreateWindowW(wc.lpszClassName, L"Route Carrier", WS_CAPTION | WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1260, 720, nullptr, nullptr, wc.hInstance, nullptr);   // maximize in imguisetup 
+    hwnd = ::CreateWindowW(wc.lpszClassName, L"Route Carrier", WS_CAPTION | WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1800, 1000, nullptr, nullptr, wc.hInstance, nullptr);   // maximize in imguisetup 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
@@ -495,7 +495,10 @@ void GUI::renderMixPanel() {
     static constexpr float pinSize = 12.0f;
     static constexpr float spacing = 4.0f;
     static constexpr float NODE_WIDTH = 180.0f;
-    bool isHovered = false;
+    bool DragDropisHovered = false;
+    static bool menuOpen = false;
+    static NodeID nodeHovered = 0;
+    static NodeID nodeRightClicked = 0;
 
     ImGui::Begin("Mixing Panel", &showMixer, ImGuiWindowFlags_NoNavInputs);
     node::SetCurrentEditor(node_Context);
@@ -528,25 +531,24 @@ void GUI::renderMixPanel() {
                 case GUI::DragDropBlock::Reverb:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Reverb);
                     Logger::log("Added Reverb", level_INFO);
+                    break;
+                case GUI::DragDropBlock::EQ:
+                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::EQ);
+                    Logger::log("Added EQ", level_INFO);
+                    break;
                 default:
                     break;
             }
 
             node::SetNodePosition(nodeToGiveInitPosition, ImGui::GetMousePos()); //once, to make sure it drops on the right spot!
         }
-        isHovered = true;
+        DragDropisHovered = true;
 
         ImGui::EndDragDropTarget();
-      
-     // ImGui::SetCursorPos(ImGui::GetMousePos());
-     // ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-
         node::BeginNode(999);
         ImGui::Dummy({200,100});
         node::EndNode();
         node::SetNodePosition(999, ImGui::GetMousePos());
-
-     //   ImGui::PopStyleColor();
 
     }
 
@@ -608,7 +610,22 @@ void GUI::renderMixPanel() {
 
     node::EndDelete();
     node::EndCreate();
+
+    nodeHovered = ed::GetHoveredNode().Get();        
     node::End();
+
+    if (nodeHovered) nodeRightClicked = nodeHovered;    // actually assign node value
+    
+    // Right-click menu
+    if ((nodeHovered || menuOpen) && ImGui::BeginPopupContextItem("context_menu")) {
+        menuOpen = true;
+        renderLocalNodeContextMenu(nodeRightClicked);
+        ImGui::EndPopup();
+    } else {
+        menuOpen = false;
+    }
+    
+
     node::SetCurrentEditor(nullptr);
 
     ImGui::End();
@@ -623,9 +640,7 @@ void GUI::renderDeviceList() {
     static juce::StringArray inputs;
     static juce::StringArray outputs;
 
-
     ImGui::Begin("Devices");
-
     // update audio device list every 2 seconds or on a button press
     if (ImGui::Button("refresh list") || (ImGui::GetFrameCount() % 120) == 0) {
         type->scanForDevices();                 // must call to populate names
@@ -771,6 +786,99 @@ void GUI::sendGraphicsToGPU() {
 
 }
 
+void GUI::renderLocalNodeContextMenu(NodeID ID) {
+
+    if(!prog->audio.nodes.contains(ID)) return;
+
+    AudioNode* node = prog->audio.nodes.at(ID).get();
+
+    BlockType type = node->getBlockType();
+
+
+    if (ImGui::MenuItem("Copy"));
+    if (ImGui::MenuItem("Cut")) prog->audio.deleteNode(ID);
+    if (ImGui::MenuItem("Delete Node")) prog->audio.deleteNode(ID);
+    if (ImGui::MenuItem("Break all links")) prog->audio.breakAllLinks(ID);
+
+    switch (type)
+    {
+    case BlockType::InputDevice:
+
+        if (!prog->audio.nodes.contains(ID)) return;
+
+        if (ImGui::BeginMenu("Change Input Device")) {
+
+            static auto& deviceTypes = prog->audio.nullDevice.deviceManager.getAvailableDeviceTypes();
+            static juce::AudioIODeviceType* type = deviceTypes.getFirst();                                      // takes WASAPI, maybe check for Low Latency?
+
+            static juce::StringArray inputs;
+
+            // update audio device list every 2 seconds or on a button press
+            if ((ImGui::GetFrameCount() % 20) == 0) {
+                type->scanForDevices();                 // must call to populate names
+                inputs = type->getDeviceNames(true);    // true = input
+               
+            }
+
+            for (auto& s : inputs) {
+                if (ImGui::MenuItem(("IN: " + s.toStdString()).c_str())) {
+                    juce::String chosenInput(s);
+                    prog->audio.changeAudioDevice(ID, chosenInput,false);
+                }
+            }
+
+            ImGui::EndMenu();
+        }
+        
+        break;
+    case BlockType::OutputDevice:
+    {
+    
+        if (!prog->audio.nodes.contains(ID)) return;
+
+        if (ImGui::BeginMenu("Change Output Device")) {
+
+            static auto& deviceTypes = prog->audio.nullDevice.deviceManager.getAvailableDeviceTypes();
+            static juce::AudioIODeviceType* type = deviceTypes.getFirst();                                      // takes WASAPI, maybe check for Low Latency?
+
+            static juce::StringArray outputs;
+
+            // update audio device list every 2 seconds or on a button press
+            if ((ImGui::GetFrameCount() % 20) == 0) {
+                type->scanForDevices();                 // must call to populate names
+                outputs = type->getDeviceNames(false);  // false = output
+            }
+
+            for (auto& s : outputs) {
+                if (ImGui::MenuItem(("OUT: " + s.toStdString()).c_str())) {
+                    juce::String chosenOutput(s);
+                    prog->audio.changeAudioDevice(ID, chosenOutput, true);
+                }
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+      
+        DeviceNode* devptr = dynamic_cast<DeviceNode*>(node);
+        ImGui::BeginDisabled(devptr->isMainOutput());
+        if (ImGui::MenuItem("Set as main output")) prog->audio.selectMainOutput(ID);
+        ImGui::EndDisabled();
+        if (devptr->isMainOutput()) ImGui::SetItemTooltip("Already selected as main out");
+    }
+        break;
+    case BlockType::DSP:
+        break;
+    case BlockType::FileInput:
+        break;
+    default:
+        break;
+    }
+
+
+}
 
 // Custom GUI Elements - helper functions
 

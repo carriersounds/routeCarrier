@@ -75,7 +75,9 @@ public:
     BaseID getNewID(Identifier type);                                                   // uniqueID++
     void createLink(node::PinId leftPin, node::PinId rightPin);
     void deleteLink(LinkID linkID);
+    void breakAllLinks(NodeID node);
 
+    void selectMainOutput(NodeID id);
     vector<juce::String> getDeviceNames();          // uses nullDevice, (type ASIO / wasapi etc) 
     bool audio_engine_on;
 

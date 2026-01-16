@@ -4,8 +4,15 @@
 #include <JuceHeader.h>
 #include "AudioDSPNode.h"
 
-
-// channel strip
+enum class filterType {
+    lowPass,
+    highPass,
+    bandPass,
+    lowShelf,
+    highShelf,
+    notch,
+    peak,
+};
 
 class EqualizerNode final : public DSPNode
 {
@@ -16,18 +23,16 @@ public:
         *(EQ.get<1>().state) = *juce::dsp::IIR::Coefficients<float>::makeNotch(48000.0, 200);
         *(EQ.get<2>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 300,0.7,4);        // = EQ Node
         *(EQ.get<3>().state) = *juce::dsp::IIR::Coefficients<float>::makeHighPass(48000.0, 600);
-
+ 
     }
 
-    // ===== Parameters =====
-    int filterType;
 
 protected:
     EffectType getType() { return EffectType::EQ; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { EQ.reset(); EQ.prepare(spec); }
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
 
-    void renderInterface() override;
+    void renderInterface(float NODE_WIDTH) override;
 
 private:
     using Filter = juce::dsp::IIR::Filter<float>;
@@ -58,7 +63,7 @@ protected:
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{filter.reset(); filter.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
     
-    void renderInterface() override;
+    void renderInterface(float NODE_WIDTH) override;
     
 private:
     using Filter = juce::dsp::IIR::Filter<float>;
@@ -77,7 +82,7 @@ public:
 
     float gainValueDB;
 protected:
-    void renderInterface() override;
+    void renderInterface(float NODE_WIDTH) override;
 
     EffectType getType() { return EffectType::Gain; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{gain.reset();gain.prepare(spec);}
@@ -113,7 +118,7 @@ public:
     float freezeMode = 0.0f;    //*< Freeze mode - values < 0.5 are "normal" mode, values > 0.5 put the reverb into a continuous feedback loop.
 
 protected:
-    void renderInterface() override;
+    void renderInterface(float NODE_WIDTH) override;
 
     EffectType getType() { return EffectType::Reverb; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { reverb.reset(); reverb.prepare(spec); }

@@ -46,7 +46,6 @@ public:
         EQ
     };
 
-
     GUI(Program* prog);
     ~GUI();
     static inline d11backend d11;
@@ -87,6 +86,7 @@ private:
     void renderMixPanel();
     void renderDeviceList();
     void renderToolbar();
+    void renderLocalNodeContextMenu(NodeID ID);
 
     void renderLog();
     void renderFIFOState();

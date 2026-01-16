@@ -24,6 +24,7 @@ public:
     juce::AudioIODevice* devicePointer;
     juce::AudioDeviceManager deviceManager;                                              
     juce::WaitableEvent* trigger;           // to signal that new audio is needed
+    juce::WaitableEvent* trigAddress;
 
     void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) override;
 
@@ -37,11 +38,13 @@ public:
     
     void audioDeviceStopped() override {}
 
-    void setAsMainOutput(juce::WaitableEvent* trigger);
+    void setTriggerAddress(juce::WaitableEvent* trigger);
+
+    void setAsMainOutput(bool set);
   
     void prepareOutput() override;
     
-    bool isMainOutput() const { return m_isMainOutput; }
+    bool isMainOutput() const { return trigger != nullptr; }
     
     const float* getDataPointer() const {
         return hardwareBuffer.getReadPointer(0);
@@ -51,8 +54,6 @@ public:
     juce::AbstractFifo hardwareFIFO;    // for hardware inputs to write to and for hardware outputs to RECEIVE data from  
     juce::AudioBuffer<float> hardwareBuffer;
 
-private:  
-    bool m_isMainOutput;
 };
 
 

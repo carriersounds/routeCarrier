@@ -41,7 +41,7 @@ public:
     // ================ Configuration =====================
 
     void renderAsNode(float pinSize, float spacing, float NODE_WIDTH) override;           // render name & i/o pins
-    virtual void renderInterface() = 0;     // render actual effect interface / params, should be contained in main render function
+    virtual void renderInterface(float NODE_WIDTH) = 0;     // render actual effect interface / params, should be contained in main render function
 
     virtual EffectType getType() = 0;                                       // used by GUI for parameter management
 

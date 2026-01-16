@@ -12,6 +12,10 @@ void DSPNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
 
     node::BeginNode(ID);
 
+    if (getType() == EffectType::EQ) {
+        NODE_WIDTH = 400;
+    }
+
     // ============== TITLE ==============  
     ImGui::Text(getBlockName().c_str());
     ImVec2 p = ImGui::GetCursorScreenPos();
@@ -20,10 +24,8 @@ void DSPNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
     ImGui::Dummy(ImVec2(0, 6));
 
 
-    // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX ===== 
-    ImGui::PushItemWidth(NODE_WIDTH - 40);
-    renderInterface(); 
-    ImGui::PopItemWidth();
+    // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX =====       
+    renderInterface(NODE_WIDTH);
     ImGui::NewLine();
 
 

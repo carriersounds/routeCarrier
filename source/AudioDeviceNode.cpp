@@ -2,15 +2,12 @@
 #include "Program.h"
 
 DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID)
-        : hardwareFIFO(FIFOSIZE), 
-        m_isMainOutput(false), 
+        : hardwareFIFO(FIFOSIZE),
         hardwareBuffer(2, FIFOSIZE),
         AudioNode(blocktype,initDeviceName,nodeID),
-        devicePointer(nullptr)
+        devicePointer(nullptr),
+        trigger(nullptr)
     {
-
-    trigger = nullptr;
-
 
     juce::String err = deviceManager.initialise(
         m_blockType == BlockType::InputDevice ? 2 : 0,
@@ -19,8 +16,6 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
         true,
         Name
     );
-
-  //  juce::IAudio
 
     juce::AudioDeviceManager::AudioDeviceSetup setup;
 
@@ -40,18 +35,31 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
  
 void DeviceNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
 
-    // Draw input Nodes
+            // Draw input Node
     
-    if (isInput()){
+         // ============== TITLE ==============
+    node::BeginNode(ID);
 
-        // ============== TITLE ==============
-        node::BeginNode(ID);
-        ImGui::Text(getBlockName().c_str());
-        ImVec2 p = ImGui::GetCursorScreenPos();
-        float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
-        ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
-        ImGui::Dummy(ImVec2(0, 6));
-        ImGui::NewLine();
+    ImGui::Text(getBlockName().c_str()); 
+    ImVec2 p = ImGui::GetCursorScreenPos();
+
+    if (isMainOutput()) {    
+        ImGui::SameLine();
+        float radius = 8.0f;
+        ImDrawList* dlm = ImGui::GetWindowDrawList();
+        ImVec2 posm = ImGui::GetCursorScreenPos();
+        posm = posm + radius;
+        ImGui::Dummy({2 * radius + spacing,radius });
+        dlm->AddCircleFilled(ImVec2(posm.x, posm.y), radius, IM_COL32(255, 50, 50, 200));
+    }
+    
+    float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
+    ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
+
+    ImGui::Dummy(ImVec2(0, 6));
+    ImGui::NewLine();
+
+    if (isInput()){
 
         // ============== OUTPUT PIN ==============        
         const char* labelout = "FROM DEVICE        ";
@@ -69,21 +77,11 @@ void DeviceNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
         poso.x = poso.x - textSizeOut.y - spacing;      // textSizeOut.y = circle width(spacing)
         dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f), textSizeOut.y * 0.5f, IM_COL32(250, 150, 30, 255));
         node::EndPin();
-        node::EndNode();
     }
     else if(isOutput())     // Draw output Node
     {
-        
-        // ============== TITLE ==============
-        node::BeginNode(ID);
-        ImGui::Text(getBlockName().c_str());
-        ImVec2 p = ImGui::GetCursorScreenPos();
-        float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
-        ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
-        ImGui::Dummy(ImVec2(0, 6)); // spacing after divider
-        ImGui::NewLine();
-        
-        // ============== INPUT PIN ==============
+
+        // ============== PIN ==============
         const char* labelin = "    TO DEVICE";
         ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
         node::BeginPin(inputPin, ed::PinKind::Input);
@@ -95,8 +93,13 @@ void DeviceNode::renderAsNode(float pinSize, float spacing, float NODE_WIDTH) {
         dli->AddCircleFilled(ImVec2(posi.x, posi.y + textSizeIn.y * 0.5f), textSizeIn.y * 0.5f, IM_COL32(30, 150, 230, 255));
         ImGui::TextUnformatted(labelin);
         node::EndPin();
-        node::EndNode();
-    }
+
+    }     
+      
+    node::EndNode();
+
+
+
 }
 
 void DeviceNode::selectDevice(const juce::String& nameToFind, bool isOutput)
@@ -129,7 +132,7 @@ void DeviceNode::selectDevice(const juce::String& nameToFind, bool isOutput)
                     setup.inputDeviceName = nameToFind;
                     setup.bufferSize = BLOCKSIZE;
                     deviceManager.setAudioDeviceSetup(setup, true);
-
+                    Name = nameToFind.toStdString();
                     m_blockType = BlockType::InputDevice;
 
                     return;
@@ -142,7 +145,7 @@ void DeviceNode::selectDevice(const juce::String& nameToFind, bool isOutput)
                     setup.outputDeviceName = nameToFind;
                     setup.bufferSize = BLOCKSIZE;
                     deviceManager.setAudioDeviceSetup(setup, true);
-
+                    Name = nameToFind.toStdString();
                     m_blockType = BlockType::OutputDevice;
 
                     return;
@@ -248,14 +251,13 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
             
             if (samplesWritten > numSamples) {
-                Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+           //     Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
             }
-
             if (samplesWritten < numSamples) {
-                Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+          //      Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
             }
         } else {
-            Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
+         //   Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
         }
     }
 
@@ -265,15 +267,13 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
     // 
     // think: normally, this ratio should be 1, but can oscillate around 1 (shows that its working)
 
-
-
     if (m_blockType == BlockType::OutputDevice) {
 
         const float* data = this->hardwareBuffer.getReadPointer(0);
         int samplesRead = readFromFifoTo(outputChannelData, numSamples);
         if (samplesRead < numSamples)
         {
-            Logger::log("UNDERRUN IN OUTPUT: SamplesRead(" + to_string(samplesRead) + ") < numSamples(" + to_string(numSamples) + ")");
+        //    Logger::log("UNDERRUN IN OUTPUT: SamplesRead(" + to_string(samplesRead) + ") < numSamples(" + to_string(numSamples) + ")");
 
             // Underrun → zero remaining output
             for (int ch = 0; ch < numOutputChannels; ++ch)      // only triggered once i believe, at the start?
@@ -284,21 +284,20 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             }
         }
 
-       if(isMainOutput() && hardwareFIFO.getNumReady() < BLOCKSIZE)
+       if(trigger != nullptr && hardwareFIFO.getNumReady() < BLOCKSIZE)
         trigger->signal();                                                  // trigger engine that the output fifo is getting empty! needs a refill 
        // fifo should be filled within 1 output sample period
-
        // get timestampPair?
-
      //  IAudioClock::GetPosition()
 
 
     }
 }
-void DeviceNode::setAsMainOutput(juce::WaitableEvent* trigger) {
-
-    m_isMainOutput = true;
-    this->trigger = trigger;
+void DeviceNode::setAsMainOutput(bool set) {   
+    trigger = set ? trigAddress : nullptr;
+}
+void DeviceNode::setTriggerAddress(juce::WaitableEvent* trigger) {
+    this->trigAddress = trigger; 
 }
 
 void DeviceNode::initDSP(double sr, int bs)

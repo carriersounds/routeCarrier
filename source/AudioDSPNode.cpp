@@ -48,7 +48,7 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
     preciseOffset = 53.0f
 #endif // DEBUG
 
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node::GetNodeSize(ID).x - (textSizeOut.x + spacing + preciseOffset));     // precise offset 
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node::GetNodeSize(ID).x - (textSizeOut.x + spacing + preciseOffset));
     node::BeginPin(outputPin, ed::PinKind::Output);
     ImGui::TextUnformatted(labelout);
     ImGui::SameLine();
@@ -66,25 +66,19 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 void DSPNode::process() {
     outputBuffer.clear();
     outputBuffer.makeCopyOf(inputBuffer, false);    // output buf is the process context
-    juce::MidiBuffer empt;                  // function needs it RIP
+    juce::MidiBuffer empt;                          // function needs it RIP
     processBlock(outputBuffer, empt);
 }
 
 void DSPNode::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::dsp::AudioBlock<float> block(buffer);
-
     processDSP(block);
-
 }
 
 void DSPNode::prepareToPlay(double sampleRate, int blockSize)
 {
-    juce::dsp::ProcessSpec spec{
-        sampleRate,
-        static_cast<int>(blockSize),
-        static_cast<int>(numOutputs)
-    };
+    juce::dsp::ProcessSpec spec{sampleRate,blockSize,numOutputs};
 
     prepareDSP(spec);
 }

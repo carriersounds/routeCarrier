@@ -113,7 +113,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>source\JuceLibraryCode;A:\Documents\Tech Projects\Code &amp; Software\Libraries\JUCE\modules;A:\Documents\Tech Projects\Code &amp; Software\Libraries\imgui-node-editor;source\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>source\JuceLibraryCode;..\..\..\Libraries\JUCE\modules;source\imgui</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
@@ -133,7 +133,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>source\JuceLibraryCode;A:\Documents\Tech Projects\Code &amp; Software\Libraries\JUCE\modules;A:\Documents\Tech Projects\Code &amp; Software\Libraries\imgui-node-editor;source\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>source\JuceLibraryCode;..\..\..\Libraries\JUCE\modules;source\imgui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>

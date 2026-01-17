@@ -299,16 +299,3 @@ void DeviceNode::setAsMainOutput(bool set) {
 void DeviceNode::setTriggerAddress(juce::WaitableEvent* trigger) {
     this->trigAddress = trigger; 
 }
-
-void DeviceNode::initDSP(double sr, int bs)
-{
-    //   dspChain.sampleRate = sr;
-   //    dspChain.blockSize = bs;
-
-       // default: add lowpass filter
-   //    dspChain.addEffect<juce::dsp::IIR::Filter<float>>();
-
-       // Configure filter
-    //   auto* filter = dynamic_cast<juce::dsp::IIR::Filter<float>*>(dspChain.chain[0].get());
-    //   *filter = juce::dsp::IIR::Coefficients<float>::makeLowPass(sr, 2000.0f);
-}

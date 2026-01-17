@@ -26,12 +26,9 @@ public:
         *(EQ.get<1>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 500, 0.7, -4);
         *(EQ.get<2>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 3000,0.7,4);        // = EQ Node
         *(EQ.get<3>().state) = *juce::dsp::IIR::Coefficients<float>::makeHighPass(48000.0, 10000);
- 
     }
 
-
     void getMagnetudeCurve();
-
     std::vector<float> X_frequencies;
     std::vector<float> Y_responseDB;
 
@@ -49,19 +46,16 @@ private:
     juce::dsp::ProcessorChain<fullFilter, fullFilter, fullFilter, fullFilter> EQ;
 };
 
-
 class FilterNode final : public DSPNode
 {
 public:
     FilterNode(BlockType blocktype,juce::String initDeviceName,NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID){
-
         cutoffHz = 200.0f;
         resonance = 0.7f;
         filterType = 0;
         *filter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, cutoffHz);
     }
 
-    // ===== Parameters =====
     float cutoffHz{ 200.0f };
     float resonance{ 0.7f };
     int filterType{ 0 };
@@ -70,14 +64,12 @@ protected:
     EffectType getType() { return EffectType::Filter; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{filter.reset(); filter.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
-    
     void renderInterface() override;
     
 private:
     using Filter = juce::dsp::IIR::Filter<float>;
     using Coeffs = juce::dsp::IIR::Coefficients<float>;
     juce::dsp::ProcessorDuplicator<Filter, Coeffs> filter;
-
 };
 
 class GainNode final : public DSPNode
@@ -88,9 +80,9 @@ public:
     }
 
     float gainValueDB;
+
 protected:
     void renderInterface() override;
-
     EffectType getType() { return EffectType::Gain; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{gain.reset();gain.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;

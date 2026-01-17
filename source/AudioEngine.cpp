@@ -20,26 +20,19 @@ AudioEngine::~AudioEngine() {
 
 void AudioEngine::run() {
 
-    unsigned long tickCounter = 0;
-
-    Counter threadTimer;
-    threadTimer.startTimer();
-
     while (audio_engine_on) {
-        tickCounter++;
            
         requestNewAudioBlock.wait();                // wait for main output fifo to empty below BLOCKSIZE
         nodeLock.lock();
 
         for (auto& node : sortedNodes) {
-            nodes.at(node)->inputBuffer.clear();    // so they can be filled
+            nodes.at(node)->inputBuffer.clear();    // so they can be filled safely
         }
 
         for (auto& node : sortedNodes) {
-            nodes.at(node)->prepareOutput();
-            nodes.at(node)->sendAudioToNextNodes();
+            nodes.at(node)->prepareOutput();        // run processing or fifo read/write
+            nodes.at(node)->sendAudioToNextNodes(); // mix audio into nodes linked to this->output
         }
-
         nodeLock.unlock();
     }
 }
@@ -66,7 +59,6 @@ void AudioEngine::createLink(node::PinId leftPin, node::PinId rightPin) {
 
     calculateSends(nextID);
     topologicalSortNodes();
-
 
     // Detect feedback loops, will call toposort again if detected
     if (sortedNodes.size() != nodes.size()) {
@@ -186,14 +178,14 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     std::unique_lock<std::mutex> lock(nodeLock);
 
     if(blockType == BlockType::InputDevice)
-        nodes[blockID]->addPin(pinID, pinType::output);        // add 1 pin for each device. input or output is decided by node type   
+        nodes[blockID]->addPin(pinID, pinType::output);     // add 1 pin for each device. input or output is decided by node type   
     
     if (blockType == BlockType::OutputDevice)
         nodes[blockID]->addPin(pinID, pinType::input);
     
 
-    m_PinNodePairs.emplace(pinID, blockID);                             // make the parent node easier to find using a LUT                                                                     
-    fifoLevels.emplace(blockID,0); // add channel for fifo monitoring (debug)
+    m_PinNodePairs.emplace(pinID, blockID);                 // make the parent node easier to find using a LUT                                                                     
+    fifoLevels.emplace(blockID,0);                          // add channel for fifo monitoring (debug)
     
     sends.emplace(blockID, vector<NodeID>());
 
@@ -210,7 +202,7 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
 
 NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
 
-    NodeID blockID = getNewID(Identifier::node);                                        // get new IDs for node and pins
+    NodeID blockID = getNewID(Identifier::node);                    // get new IDs for node and pins
     PinID inputPinID = getNewID(Identifier::pin);
     PinID outputPinID = getNewID(Identifier::pin);
 
@@ -229,6 +221,7 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
         break;
     case EffectType::EQ:
         nodes.emplace(blockID, make_unique<EqualizerNode>(BlockType::DSP, "EQ 4", blockID));
+        break;
     default:
         break;
     }   
@@ -236,7 +229,7 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
     sends.emplace(blockID, vector<NodeID>());
 
     DSPNode* dspptr = dynamic_cast<DSPNode*>(nodes.at(blockID).get());
-    dspptr->prepareToPlay(48000, BLOCKSIZE);                                 // initialize samplerates   // ONLY FOR DSPNODE
+    dspptr->prepareToPlay(48000, BLOCKSIZE);                                 // initialize samplerates 
 
 
     nodes.at(blockID)->addPin(inputPinID, pinType::input);                   // assign pins
@@ -251,7 +244,7 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
 void AudioEngine::deleteNode(NodeID nodeToDelete) {
 
     if (!nodes.contains(nodeToDelete)) {
-        Logger::log("Invalid Device queued for deletion", level_ERROR);
+        Logger::log("Invalid Node queued for deletion", level_ERROR);
         return;
     }
 

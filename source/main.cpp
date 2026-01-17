@@ -1,9 +1,9 @@
 #include "Program.h"
 
 int main() {
-    juce::initialiseJuce_GUI();
+    juce::initialiseJuce_GUI();     // needed for JUCE internal message handling
     
-    // Launch Program & Audio Engine
+    // Launch Program, GUI and Audio Engine
     unique_ptr<Program> prog = make_unique<Program>();
 
     // Main GUI Loop
@@ -15,15 +15,13 @@ int main() {
             if (msg.message == WM_QUIT) break;  // close on X press
         }
 
-        if (GUI::d11.update()) continue;                        // skip render during window resizing, minimizing or dragging
+        if (GUI::d11.update()) continue;        // skip render during window resizing, minimizing or dragging
 
         prog->gui.renderAllModules();
         prog->gui.sendGraphicsToGPU();
     }
 
-    prog.reset(); // so all audio-related memory is released before JUCE shutdown
-
+    prog.reset();                               // so all audio-related memory is released before JUCE shutdown
     juce::shutdownJuce_GUI();
-
     return 0;
 }

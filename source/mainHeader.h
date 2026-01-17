@@ -38,7 +38,7 @@
 #include "imgui_impl_win32.h"
 #include "implot\implot.h"
 #include "implot\implot_internal.h"
-#include "imgui_node_editor.h"
+#include "imgui\node-editor\imgui_node_editor.h"
 #include "imgui-knobs.h"
 
 

@@ -11,7 +11,6 @@ public:
 	AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
 	virtual ~AudioNode() = default;
 	
-
 	// Main Interface
 	bool isInput() const { return (m_blockType == BlockType::InputDevice); }
 	bool isOutput() const { return (m_blockType == BlockType::OutputDevice); }
@@ -40,23 +39,20 @@ public:
 	PinID inputPin;
 	PinID outputPin;
 	std::map<NodeID,AudioNode*> nextNodes;
-	juce::AudioBuffer<float> inputBuffer;
-
+	juce::AudioBuffer<float> inputBuffer;		// can be filled by other members
 	double sampleRate = 48000;
 	int blockSize = BLOCKSIZE;
 	int numChannels = 2;
 
-
-
 protected:
+	juce::AudioBuffer<float> outputBuffer;		// can only be filled by itself
 	NodeID ID;
 	juce::String Name;
 	BlockType m_blockType;
-	juce::AudioBuffer<float> outputBuffer;
 	static void mixInto(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src);
 	static void copyBuffer(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src);
 
-	// Managing GUI-engine safety;
+	// Decouple gui controls from audio using a single flag. currently only used by dsp, but will add more gui to device nodes as well prolly
 	atomic<bool> parameterChanged = false;
 	bool ImGui_InvertedFloatSlider(const char* name, float& param, float min, float max, const char* format = "%.2f", ImGuiSliderFlags flags = 0);
 };

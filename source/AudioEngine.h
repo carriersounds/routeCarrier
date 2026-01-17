@@ -59,26 +59,25 @@ public:
     // Identifiers
     DeviceNode nullDevice;                                      // no input, no output, just for namecheck 
     std::map<NodeID, unique_ptr<AudioNode>> nodes;              // Both DSP and device nodes
-    std::map<NodeID, vector<NodeID>> sends;                     // as input for toposort
-    vector<NodeID> sortedNodes;       
-    std::map<LinkID, BlockLink> links;
+    std::map<NodeID, vector<NodeID>> sends;                     // where each node sends its audio to
+    vector<NodeID> sortedNodes;                                 // input for topological sort
+    std::map<LinkID, BlockLink> links;                          // main interface for generating and deleting links
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
     std::map<NodeID,float> fifoLevels;                          // for metering buffers
 
     // Node management
     NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName);          // choose input or output, returns next ID
-    NodeID addNewDSPNode(EffectType typeOfEffect);                                 // effects = enum in function input, return is for GUI i think?   
-    void deleteNode(NodeID deviceID);
-    void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput);   
+    NodeID addNewDSPNode(EffectType typeOfEffect);                                      // effects = enum in function input, return is for GUI i think?   
+    void deleteNode(NodeID deviceID);   
+    void createLink(node::PinId leftPin, node::PinId rightPin);
+    void deleteLink(LinkID linkID);
     void calculateSends(LinkID newlink);
     void topologicalSortNodes();
     BaseID getNewID(Identifier type);                                                   // uniqueID++
-    void createLink(node::PinId leftPin, node::PinId rightPin);
-    void deleteLink(LinkID linkID);
     void breakAllLinks(NodeID node);
 
+    void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput);
     void selectMainOutput(NodeID id);
-    vector<juce::String> getDeviceNames();          // uses nullDevice, (type ASIO / wasapi etc) 
     bool audio_engine_on;
 
 private:

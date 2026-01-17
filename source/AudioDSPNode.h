@@ -1,28 +1,8 @@
 #ifndef AUDIO_FX
 #define AUDIO_FX
-#include "MainHeader.h"
+#include "mainHeader.hpp"
 #include <JuceHeader.h>
 #include "AudioNodes.h"
-
-
-struct IDSPParameter
-{
-    virtual ~IDSPParameter() = default;
-};
-
-template <typename T>
-struct DSPParameter : IDSPParameter
-{
-    DSPParameter(NodeID parent, std::string name, T initial)
-        : parentNode(parent), paramName(std::move(name)), value(initial)
-    {
-
-    }
-
-    NodeID parentNode;
-    std::string paramName;
-    std::atomic<T> value;
-};
 
 
 
@@ -40,7 +20,7 @@ public:
 
     // Interface
     void renderAsNode(float pinSize, float spacing) override;               // render name & i/o pins
-    virtual void renderInterface() = 0;                                     // render actual effect interface / params
+    virtual void renderInterface(float nodeW) = 0;                              // render actual effect interface / params
     virtual EffectType getType() = 0;                                       // used by GUI for parameter management
 
 

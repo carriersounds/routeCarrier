@@ -3,7 +3,7 @@
 This is a work-in-progress modular audio routing tool.
 This program is built around a node editor where audio devices can be connected by a graph structure.
 
-![Interface Demo](screenshots/screenshot7%20big%20gui%20improvement.png)
+![Interface Demo](screenshots/screenshot8.png)
 
 ## Who is it for?
 
@@ -33,7 +33,7 @@ This program is built around a node editor where audio devices can be connected 
 
 
 ## Current State
-- Very barebones DSP blocks and toolbar (only 4 effects so far)
+- Very barebones DSP blocks and toolbar
 - Not a lot of metadata so Windows will probably still flag the app
 - Samplerate conversion is not dynamic yet, so de-sync and crackling will probably creep in over time. This is a big feature and it will take time to flush out properly.
 

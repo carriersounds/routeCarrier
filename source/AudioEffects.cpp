@@ -3,18 +3,20 @@
 
 #define INDENT_NEXT ImGui::Dummy({ 10,10 }); ImGui::SameLine();
 
+#define ifDoubleClicked if (ImGui::IsItemActive() && ImGui::IsMouseDoubleClicked(0))
+
 //========= PROCESSING ===========
-void EqualizerNode::processDSP(juce::dsp::AudioBlock<float>& block) {
+void Equalizer::processDSP(juce::dsp::AudioBlock<float>& block) {
 
     if (parameterChanged.load()) {
 
         parameterChanged.store(false);
     }
 
-    EQ.process(juce::dsp::ProcessContextReplacing<float>(block));
+    EQ4.process(juce::dsp::ProcessContextReplacing<float>(block));
 }
 
-void FilterNode::processDSP(juce::dsp::AudioBlock<float>& block) {
+void Filter::processDSP(juce::dsp::AudioBlock<float>& block) {
 
     if (parameterChanged.load()) {
 
@@ -26,6 +28,8 @@ void FilterNode::processDSP(juce::dsp::AudioBlock<float>& block) {
             break;
         case FilterType::bandPass:*filter.state = *juce::dsp::IIR::Coefficients<float>::makeBandPass(sampleRate, cutoffHz, resonance);
             break;
+        case FilterType::notch: *filter.state = *juce::dsp::IIR::Coefficients<float>::makeNotch(sampleRate, cutoffHz);
+            break;
         default:
             break;
         }      
@@ -35,7 +39,7 @@ void FilterNode::processDSP(juce::dsp::AudioBlock<float>& block) {
     filter.process(juce::dsp::ProcessContextReplacing<float>(block));
 }
 
-void GainNode::processDSP(juce::dsp::AudioBlock<float>& block) {
+void Gain::processDSP(juce::dsp::AudioBlock<float>& block) {
     if (parameterChanged.load()) {
         gain.setGainDecibels(gainValueDB);
         parameterChanged.store(false);
@@ -44,7 +48,7 @@ void GainNode::processDSP(juce::dsp::AudioBlock<float>& block) {
     gain.process(juce::dsp::ProcessContextReplacing<float>(block));
 }
 
-void ReverbNode::processDSP(juce::dsp::AudioBlock<float>& block) {
+void Reverb::processDSP(juce::dsp::AudioBlock<float>& block) {
 
     if (parameterChanged.load()) {
 
@@ -54,12 +58,41 @@ void ReverbNode::processDSP(juce::dsp::AudioBlock<float>& block) {
     }
 
     reverb.process(juce::dsp::ProcessContextReplacing<float>(block));
+}
+
+void Saturator::processDSP(juce::dsp::AudioBlock<float>& block) {
+
+    if (parameterChanged.load()) {
+        saturator.get<0>().setGainDecibels(inputGainDB);
+        setType((DistortionType)distortionType);
+        saturator.get<2>().setGainDecibels(outputGainDB);
+        drywet.setWetMixProportion(dryWetMix);
+        parameterChanged.store(false);
+    }
+
+    drywet.pushDrySamples(block);
+
+    saturator.process(juce::dsp::ProcessContextReplacing<float>(block));
+   
+    drywet.mixWetSamples(block);
 
 }
 
+void EffectRack::processDSP(juce::dsp::AudioBlock<float>& block) {
+    
+
+    if (chain.size() > 0) {
+        chain[0]->inputBuffer.clear();
+        mixInto(&chain[0]->inputBuffer, &inputBuffer);
+    }
+    for (size_t block = 0; block < chain.size(); block++) {
+        chain[block]->process();
+
+    }
+}
 
 //========= GRAPHICAL INTERFACE ===========
-void EqualizerNode::renderInterface() {
+void Equalizer::renderInterface(float nodeW) {
 
     ImPlot::BeginPlot("EQ GRAF", {500,200},ImPlotFlags_CanvasOnly | ImPlotFlags_NoTitle);       // USE FULL WIDTH
 
@@ -131,9 +164,16 @@ void EqualizerNode::renderInterface() {
 
 }
 
-void FilterNode::renderInterface() {
+void Filter::renderInterface(float nodeW) {
 
-    if (ImGui::BeginTable("f_tab", 3, ImGuiTableFlags_BordersInner , {300,100})) {
+    guiMtx.lock();
+    tools::drawGainMonitorHoriz(GUIbuffer, nodeW, ID);
+    guiMtx.unlock();
+    ImGui::NewLine();
+
+    bool isChanged = false;
+
+    if (ImGui::BeginTable("f_tab", 3, ImGuiTableFlags_None, {330,100})) {
 
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
@@ -141,7 +181,7 @@ void FilterNode::renderInterface() {
         INDENT_NEXT
 
         if (ImGuiKnobs::Knob("Freq", &cutoffHz, 20.0f, 20000, 0.0f, "%.1f Hz", ImGuiKnobVariant_WiperOnly, 0.0f, ImGuiKnobFlags_Logarithmic)) {
-            parameterChanged.store(true);
+            isChanged = true;
         }
 
         ImGui::TableNextColumn();
@@ -149,53 +189,55 @@ void FilterNode::renderInterface() {
         INDENT_NEXT
         
         if (ImGuiKnobs::Knob("Reso", &resonance, 0.1f, 20.0f, 0.0f, "%.1f", ImGuiKnobVariant_WiperOnly)) {
-            parameterChanged.store(true);
+            isChanged = true;
         }
 
         ImGui::TableNextColumn();
-
         
-        const char* typelabels[3] = { "Lowpass", "HighPass", "Bandpass" };
-        INDENT_NEXT
-        ImGui::Text("Filter Type");
-
-        INDENT_NEXT
-        ImGui::Separator();
-
-        for (int i = 0; i < IM_ARRAYSIZE(typelabels); i++)
-        {
-            INDENT_NEXT
-            if (ImGui::Selectable(typelabels[i], filterType == i)) {
-                filterType = i;
-                parameterChanged.store(true);
-            }
-                
-        }
-
+       // INDENT_NEXT
+        if(ImGui::RadioButton("Lowpass", &filterType, 0))isChanged = true;
+      //  INDENT_NEXT
+        if(ImGui::RadioButton("Highpass", &filterType, 1))isChanged = true;
+      //  INDENT_NEXT
+        if(ImGui::RadioButton("Bandpass", &filterType, 2))isChanged = true;
+            
+        if (ImGui::RadioButton("Notch", &filterType, 3))isChanged = true;
         ImGui::SameLine();
         ImGui::Dummy({ 20,20 });
        // INDENT_NEXT
 
         ImGui::EndTable();
     }
+
+    if (isChanged) {
+        parameterChanged.store(true);
+    }
+
 }
 
-void GainNode::renderInterface() {
+void Gain::renderInterface(float nodeW) {
 
     ImGui::Dummy({ 20,30 });
     ImGui::SameLine();
 
-    if(ImGuiKnobs::Knob("Gain", &gainValueDB, -60, 36, 0.0f, "%.1f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+    if(ImGuiKnobs::Knob("Gain", &gainValueDB, -60, 60, 0.1f, "%.1f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
 
     ImGui::SameLine();
-    ImGui::Dummy({ 20,30 });
-   
+
+    guiMtx.lock();
+    tools::drawGainMonitorVertic(GUIbuffer, nodeW, ID);
+    guiMtx.unlock();
 
 }
 
-void ReverbNode::renderInterface() {
+void Reverb::renderInterface(float nodeW) {
   
     bool isChanged = false;   
+
+   // ImGui::NewLine();
+    //ImGui::Dummy({ 132,20 });   // 2 knobs
+
+    //ImGui::GetWindowDrawList()->AddLine(ImGui::GetCursorScreenPos(), (ImGui::GetCursorScreenPos() + ImVec2(270, 0)), IM_COL32(120, 120, 120, 255));
 
     if(ImGuiKnobs::Knob("Size", &roomSize, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
     ImGui::SameLine();
@@ -204,9 +246,6 @@ void ReverbNode::renderInterface() {
     if(ImGuiKnobs::Knob("Width", &width, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
     ImGui::SameLine();
     if(ImGuiKnobs::Knob("Hold", &freezeMode, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
-    ImGui::GetWindowDrawList()->AddLine(ImGui::GetCursorScreenPos(), (ImGui::GetCursorScreenPos() + ImVec2(270, 0)), IM_COL32(120, 120, 120, 255));
-    ImGui::NewLine();
-    ImGui::Dummy({ 132,20 });
     ImGui::SameLine(); 
     if(ImGuiKnobs::Knob("Dry Level", &dryLevel, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
     ImGui::SameLine();
@@ -214,5 +253,56 @@ void ReverbNode::renderInterface() {
 
     if(isChanged)
     parameterChanged.store(true);
+
+}
+
+void Saturator::renderInterface(float nodeW) {
+
+    bool isChanged = false;
+
+    if (ImGui::BeginTable("d_tab", 4, ImGuiTableFlags_BordersInner | ImGuiTableFlags_Resizable, { 500,100 })) {
+
+
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+
+        INDENT_NEXT
+
+        if (ImGuiKnobs::Knob("Input Gain", &inputGainDB, -24, 48, 0.2f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+        ifDoubleClicked{ (inputGainDB = 0.0f); isChanged = true; }
+       
+        ImGui::TableNextColumn();
+        INDENT_NEXT
+        if (ImGui::RadioButton("SoftClip", &distortionType, 0)) isChanged = true;
+        INDENT_NEXT
+        if (ImGui::RadioButton("HardClip", &distortionType, 1)) isChanged = true;
+        INDENT_NEXT
+        if (ImGui::RadioButton("SineFold", &distortionType, 2)) isChanged = true;
+        INDENT_NEXT
+        if (ImGui::RadioButton("Diode", &distortionType, 3)) isChanged = true;
+
+        ImGui::TableNextColumn();
+        INDENT_NEXT
+        if (ImGuiKnobs::Knob("Out Gain", &outputGainDB, -36, 24, 0.2f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+        ifDoubleClicked{ (outputGainDB = 0.0f); isChanged = true; }
+
+        ImGui::SameLine();
+        INDENT_NEXT
+        if (ImGuiKnobs::Knob("Dry/Wet", &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+        
+        ImGui::TableNextColumn();
+        
+        guiMtx.lock();
+        tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+        guiMtx.unlock();
+
+        ImGui::EndTable();
+    }
+
+    if (isChanged)
+        parameterChanged.store(true);
+}
+
+void EffectRack::renderInterface(float nodeW) {
 
 }

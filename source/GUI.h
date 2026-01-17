@@ -1,6 +1,6 @@
 #ifndef GUI_h
 #define GUI_h
-#include "mainHeader.h"
+#include "mainHeader.hpp"
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -43,7 +43,8 @@ public:
         Filter,
         Gain,
         Reverb,
-        EQ
+        EQ,
+        Saturator
     };
 
     GUI(Program* prog);
@@ -91,12 +92,6 @@ private:
     void renderFIFOState();
 
     void setCustomStyle();
-
-    static void drawGradientBackground(ImDrawList* drwList, const char* label, ImRect bb, bool button, bool pressed = false, bool hovered = false);
-    static void drawAnalogDial_3sections(const char* name, float ranges[], float value, ImVec2 plotSize, bool reverseColors);
-    static void drawAnalogDial_5sections(const char* name, float ranges[], float value, ImVec2 plotSize);                    // aiming at the middle
-    static bool customImageButton(iconData& icon, const string& label, const string& key, ImVec2 btnSize = ImVec2(70, 125)); // was ImVec2(73, 132)
-    static const char* getStatusString(int status);
 
 };
 

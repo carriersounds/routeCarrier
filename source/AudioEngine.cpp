@@ -135,14 +135,7 @@ void AudioEngine::deleteLink(LinkID linkID) {
 
     std::vector<NodeID>& conns = sends.at(leftNode);        // delete connection for left node from sends list
 
-    for (std::vector<NodeID>::iterator it = conns.begin(); it != conns.end();)
-    {
-        if (*it == rightNode) {
-            it = conns.erase(it);                       
-        } else {
-            ++it;   // stolen from cppreference
-        }
-    }
+    tools::RemoveObjectFromVector(conns, rightNode);
 
     nodes.at(leftNode)->nextNodes.erase(rightNode);         // also delete device pointer from "nextNodes" list
     links.erase(linkID);                                    // finally, delete actual link
@@ -195,7 +188,8 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
         devptr->setTriggerAddress(&requestNewAudioBlock);
         selectMainOutput(blockID);
     }
-        
+
+    topologicalSortNodes();                                 // add to sortedNodes
     
     return blockID;
 }
@@ -211,16 +205,19 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
     switch (typeOfEffect)
     {
     case EffectType::Filter:
-        nodes.emplace(blockID, make_unique<FilterNode>(BlockType::DSP, "Filter", blockID));
+        nodes.emplace(blockID, make_unique<Filter>(BlockType::DSP, "Filter", blockID));
         break;
     case EffectType::Gain:
-        nodes.emplace(blockID, make_unique<GainNode>(BlockType::DSP, "Gain", blockID));
+        nodes.emplace(blockID, make_unique<Gain>(BlockType::DSP, "Gain", blockID));
         break;
     case EffectType::Reverb:
-        nodes.emplace(blockID, make_unique<ReverbNode>(BlockType::DSP, "Reverb", blockID));
+        nodes.emplace(blockID, make_unique<Reverb>(BlockType::DSP, "Reverb", blockID));
         break;
     case EffectType::EQ:
-        nodes.emplace(blockID, make_unique<EqualizerNode>(BlockType::DSP, "EQ 4", blockID));
+        nodes.emplace(blockID, make_unique<Equalizer>(BlockType::DSP, "EQ 4", blockID));
+        break;
+    case EffectType::Saturator:
+        nodes.emplace(blockID, make_unique<Saturator>(BlockType::DSP, "Saturator", blockID));
         break;
     default:
         break;
@@ -237,6 +234,8 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
 
     m_PinNodePairs.emplace(inputPinID, blockID);                             // save pin assignment in LUT
     m_PinNodePairs.emplace(outputPinID, blockID);
+
+    topologicalSortNodes();                                                  // simply to add to sortedNodes
 
     return blockID;
 }

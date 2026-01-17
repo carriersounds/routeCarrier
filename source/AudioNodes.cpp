@@ -7,11 +7,12 @@ AudioNode::AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID no
 	ID(nodeID),
 	numChannels(2), 
 	inputBuffer(2, BLOCKSIZE),
-	outputBuffer(2, BLOCKSIZE)
+	outputBuffer(2, BLOCKSIZE),
+    GUIbuffer(2,BLOCKSIZE)
 { 
-
 	inputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
 	outputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
+    GUIbuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
 
 	inputPin = 0;	// 0 means not present or connected
 	outputPin = 0;
@@ -19,26 +20,33 @@ AudioNode::AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID no
 
 void AudioNode::sendAudioToNextNodes() {
 
+    // Send to adjacent nodes
     for (auto& [nextID, nextNode] : nextNodes) {
-        mixInto(&nextNode->inputBuffer, &outputBuffer);
+        mixInto(&nextNode->inputBuffer, &outputBuffer);    
+    }
+
+    // Pass safely to GUI
+    if (guiMtx.try_lock()) {
+        copyBuffer(&GUIbuffer, &outputBuffer);
+        guiMtx.unlock();
     }
 }
 
 void AudioNode::mixInto(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src)
 {
-    jassert(dest->getNumChannels() == src->getNumChannels());
+    // instead of jassert
+    int lowestChannelCount = std::min(dest->getNumChannels(), src->getNumChannels());
+
     jassert(dest->getNumSamples() == src->getNumSamples());
     jassert(dest != nullptr);
 
-    int sampilos = src->getNumSamples();
-
-    for (int ch = 0; ch < dest->getNumChannels(); ++ch)
+    for (int ch = 0; ch < lowestChannelCount; ++ch)
     {
-        dest->addFrom(ch,          // dest channel
-            0,           // dest start sample
+        dest->addFrom(ch,   // dest channel
+            0,              // dest start sample
             *src,
-            ch,          // src channel
-            0,           // src start sample
+            ch,             // src channel
+            0,              // src start sample
             src->getNumSamples());
 
         // ADD GAIN !!

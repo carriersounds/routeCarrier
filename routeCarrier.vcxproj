@@ -73,12 +73,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)bin\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)obj\$(Configuration)\</IntDir>
-    <LinkIncremental>false</LinkIncremental>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)bin\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)obj\$(Configuration)\</IntDir>
-    <LinkIncremental>false</LinkIncremental>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -214,7 +214,7 @@
     <ClInclude Include="source\imgui\imstb_textedit.h" />
     <ClInclude Include="source\imgui\imstb_truetype.h" />
     <ClInclude Include="source\JuceLibraryCode\JuceHeader.h" />
-    <ClInclude Include="source\mainHeader.h" />
+    <ClInclude Include="source\mainHeader.hpp" />
     <ClInclude Include="source\Logger.h" />
     <ClInclude Include="source\Program.h" />
     <ClInclude Include="source\AudioDSPNode.h" />

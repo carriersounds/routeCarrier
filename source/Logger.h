@@ -1,7 +1,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include "mainHeader.h"
+#include "mainHeader.hpp"
 #include <iostream>
 #include <fstream>
 #include <ctime>

@@ -1,6 +1,6 @@
 #ifndef AUDIO_VISUAL
 #define AUDIO_VISUAL
-#include "MainHeader.h"
+#include "mainHeader.hpp"
 #include <JuceHeader.h>
 #include "AudioNodes.h"
 

@@ -1,6 +1,6 @@
 #ifndef AUDIO_ENGINE
 #define AUDIO_ENGINE
-#include "MainHeader.h"
+#include "mainHeader.hpp"
 #include <JuceHeader.h>
 
 #include "AudioDeviceNode.h"
@@ -75,6 +75,7 @@ public:
     void topologicalSortNodes();
     BaseID getNewID(Identifier type);                                                   // uniqueID++
     void breakAllLinks(NodeID node);
+    // InsertBetweenLink()
 
     void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput);
     void selectMainOutput(NodeID id);

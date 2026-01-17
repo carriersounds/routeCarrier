@@ -5,7 +5,7 @@
 
 
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")             // disable console window
-#include "mainHeader.h"
+#include "mainHeader.hpp"
 #include "AudioEngine.h"
 #include "GUI.h"
 #include "FileIO.h"

@@ -8,7 +8,7 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
         devicePointer(nullptr),
         trigger(nullptr),trigAddress(nullptr)
 {
-
+    // attempt initial channelcount of 2 if the device allows it
     juce::String err = deviceManager.initialise(
         m_blockType == BlockType::InputDevice ? 2 : 0,
         m_blockType == BlockType::OutputDevice ? 2 : 0,
@@ -35,9 +35,12 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
  
 void DeviceNode::renderAsNode(float pinSize, float spacing) {
 
+    // ++ ADD LEVEL METER + GAIN
+
+
          // Draw input Node
     
-         // ============== TITLE ==============
+    // ============== TITLE CARD ==============
     node::BeginNode(ID);
 
     ImGui::Text(getBlockName().c_str()); 
@@ -51,13 +54,17 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
         posm = posm + radius;
         ImGui::Dummy({2 * radius + spacing,radius });
         dlm->AddCircleFilled(ImVec2(posm.x, posm.y), radius, IM_COL32(255, 50, 50, 200));
-    }
-    
+    }    
     float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
     ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
 
     ImGui::Dummy(ImVec2(0, 6));
-    ImGui::NewLine();
+
+    guiMtx.lock();
+    tools::drawGainMonitorHoriz(GUIbuffer, w, ID);
+    guiMtx.unlock();
+
+    ImGui::Dummy(ImVec2(0, 10));
 
     if (isInput()){
 
@@ -212,10 +219,11 @@ void DeviceNode::prepareOutput() {
         readFromFifoTo(outputBuffer.getArrayOfWritePointers(), BLOCKSIZE);
     }
     else if (m_blockType == BlockType::OutputDevice) {
+        copyBuffer(&outputBuffer, &inputBuffer);    
         writeToFifoFrom(inputBuffer.getArrayOfReadPointers(), BLOCKSIZE);
     }
 
-    // if output, actually send to hardware, since these will always be last after sorting
+    // if output, send to hardware & virtual out (gui), since these will always be last after sorting
 }
 
 void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
@@ -223,13 +231,25 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
     sampleRate = device->getCurrentSampleRate();
     blockSize = device->getCurrentBufferSizeSamples();
 
+    if(isInput())
+        numChannels = device->getActiveInputChannels().countNumberOfSetBits();
+
+    if(isOutput())
+        numChannels = device->getActiveOutputChannels().countNumberOfSetBits();
+
+    if (numChannels != 2) {
+        inputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
+        outputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
+        GUIbuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
+        hardwareBuffer.setSize(numChannels, FIFOSIZE, false, true, true);
+    }
+
     devicePointer = device;
 
-    Logger::log("Device About To Start: " + device->getName().toStdString());
-
-    Logger::log("SampleRate = " + to_string(device->getCurrentSampleRate()));
-    Logger::log("BlockSize = " + to_string(device->getCurrentBufferSizeSamples()));
-
+    Logger::log("Device Starting: " + device->getName().toStdString(),level_INFO);
+    Logger::log("SampleRate: " + to_string(sampleRate), level_INFO);
+    Logger::log("BlockSize: " + to_string(blockSize), level_INFO);
+    Logger::log("NumChannels: " + to_string(numChannels), level_INFO);
 }
 
 void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels, 
@@ -251,10 +271,10 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
             
             if (samplesWritten > numSamples) {
-           //     Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+            //    Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
             }
             if (samplesWritten < numSamples) {
-          //      Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
+             //   Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
             }
         } else {
          //   Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");

@@ -1,6 +1,6 @@
 #ifndef AUDIO_EFFECTS
 #define AUDIO_EFFECTS
-#include "MainHeader.h"
+#include "mainHeader.hpp"
 #include <JuceHeader.h>
 #include "AudioDSPNode.h"
 
@@ -13,19 +13,34 @@ enum class FilterType {
     notch,
     peak,
 };
+enum class DistortionType {
+    softclip,
+    hardclip,
+    sinfold,
+    diode
+};
 
-class EqualizerNode final : public DSPNode
+using Filt = juce::dsp::IIR::Filter<float>;
+using Coeffs = juce::dsp::IIR::Coefficients<float>;
+using JuceFilter = juce::dsp::ProcessorDuplicator<Filt, Coeffs>;
+using JuceGain = juce::dsp::Gain<float>;
+using JuceShaper = juce::dsp::WaveShaper<float>;
+
+// Add graphs / output meters for better 
+
+
+class Equalizer final : public DSPNode
 {
 public:
-    EqualizerNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID) {
+    Equalizer(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID) {
 
         X_frequencies.resize(500);
         Y_responseDB.resize(500);   // EQ graph
 
-        *(EQ.get<0>().state) = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, 100);
-        *(EQ.get<1>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 500, 0.7, -4);
-        *(EQ.get<2>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 3000,0.7,4);        // = EQ Node
-        *(EQ.get<3>().state) = *juce::dsp::IIR::Coefficients<float>::makeHighPass(48000.0, 10000);
+        *(EQ4.get<0>().state) = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, 100);
+        *(EQ4.get<1>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 500, 0.7, -4);
+        *(EQ4.get<2>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 3000,0.7,4);        // = EQ Node
+        *(EQ4.get<3>().state) = *juce::dsp::IIR::Coefficients<float>::makeHighPass(48000.0, 10000);
     }
 
     void getMagnetudeCurve();
@@ -35,21 +50,19 @@ public:
 
 protected:
     EffectType getType() { return EffectType::EQ; }
-    void prepareDSP(const juce::dsp::ProcessSpec& spec) override { EQ.reset(); EQ.prepare(spec); }
+    void prepareDSP(const juce::dsp::ProcessSpec& spec) override { EQ4.reset(); EQ4.prepare(spec); }
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
-    void renderInterface() override;
+    void renderInterface(float nodeW) override;
 
 private:
-    using Filter = juce::dsp::IIR::Filter<float>;
-    using Coeffs = juce::dsp::IIR::Coefficients<float>;
-    using fullFilter = juce::dsp::ProcessorDuplicator<Filter, Coeffs>;
-    juce::dsp::ProcessorChain<fullFilter, fullFilter, fullFilter, fullFilter> EQ;
+
+    juce::dsp::ProcessorChain<JuceFilter, JuceFilter, JuceFilter, JuceFilter> EQ4;
 };
 
-class FilterNode final : public DSPNode
+class Filter final : public DSPNode
 {
 public:
-    FilterNode(BlockType blocktype,juce::String initDeviceName,NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID){
+    Filter(BlockType blocktype,juce::String initDeviceName,NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID){
         cutoffHz = 200.0f;
         resonance = 0.7f;
         filterType = 0;
@@ -64,37 +77,35 @@ protected:
     EffectType getType() { return EffectType::Filter; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{filter.reset(); filter.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
-    void renderInterface() override;
+    void renderInterface(float nodeW) override;
     
 private:
-    using Filter = juce::dsp::IIR::Filter<float>;
-    using Coeffs = juce::dsp::IIR::Coefficients<float>;
-    juce::dsp::ProcessorDuplicator<Filter, Coeffs> filter;
+    JuceFilter filter;
 };
 
-class GainNode final : public DSPNode
+class Gain final : public DSPNode
 {
 public:
-    GainNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID), gainValueDB(0.0f) {
+    Gain(BlockType blocktype, juce::String initDeviceName, NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID), gainValueDB(0.0f) {
         gain.setGainDecibels(gainValueDB);
     }
 
     float gainValueDB;
 
 protected:
-    void renderInterface() override;
+    void renderInterface(float nodeW) override;
     EffectType getType() { return EffectType::Gain; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{gain.reset();gain.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
 
 private:
-    juce::dsp::Gain<float> gain;
+    JuceGain gain;
 };
 
-class ReverbNode final : public DSPNode
+class Reverb final : public DSPNode
 {
 public:
-    ReverbNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID) {
+    Reverb(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID) {
         
         roomSize = 0.5f;
         damping = 0.5f;
@@ -117,7 +128,7 @@ public:
     float freezeMode = 0.0f;    //*< Freeze mode - values < 0.5 are "normal" mode, values > 0.5 put the reverb into a continuous feedback loop.
 
 protected:
-    void renderInterface() override;
+    void renderInterface(float nodeW) override;
 
     EffectType getType() { return EffectType::Reverb; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { reverb.reset(); reverb.prepare(spec); }
@@ -127,6 +138,124 @@ private:
     juce::dsp::Reverb reverb;
 };
 
+class Saturator final : public DSPNode
+{
+public:
+    Saturator(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID), 
+        inputGainDB(0.0f),
+        outputGainDB(0.0f) ,
+        distortionType(0),
+        dryWetMix(1.0f){
+ 
+        // set distortion type
+        drywet.setWetLatency(0.0f);
+        drywet.setMixingRule(juce::dsp::DryWetMixingRule::sin3dB);
 
+        saturator.get<0>().setGainDecibels(inputGainDB);
+        setType(DistortionType::softclip);
+        saturator.get<2>().setGainDecibels(outputGainDB);
+    }
+
+    float inputGainDB;
+    float outputGainDB;
+    float dryWetMix;
+    int distortionType;
+
+protected:
+    
+    void renderInterface(float nodeW) override;
+    EffectType getType() { return EffectType::Gain; }
+    void prepareDSP(const juce::dsp::ProcessSpec& spec) override { saturator.reset(); saturator.prepare(spec);  drywet.reset(), drywet.prepare(spec); }
+    void processDSP(juce::dsp::AudioBlock<float>& block) override;
+
+    void setType(DistortionType type) {
+        auto& waveshaper = saturator.template get<1>();
+        switch (type)
+        {
+        case DistortionType::softclip:waveshaper.functionToUse = [](float x) {return tanh(10.0f*x)*0.1f; };
+            break;
+        case DistortionType::hardclip:waveshaper.functionToUse = [](float x) {return juce::jlimit(float(-0.1), float(0.1), x); };
+            break;
+        case DistortionType::sinfold:waveshaper.functionToUse = [](float x) {return sin(10.0f*x)*0.1f; };
+            break;
+        case DistortionType::diode:waveshaper.functionToUse = [](float x) {
+            if (x > 0.1f) {
+                float abovThres = 0.1f - x;
+                return 0.1f + (0.2f * abovThres);
+            } else {
+                return x;}     
+            };
+            break;
+        default:
+            break;
+        }
+    }
+private:
+
+    juce::dsp::ProcessorChain<JuceGain,JuceShaper,JuceGain> saturator;
+    juce::dsp::DryWetMixer<float> drywet;
+
+};
+
+class EffectRack final : public DSPNode
+{
+public:
+    EffectRack(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID)
+    {
+
+    }
+
+    vector<unique_ptr<DSPNode>> chain;
+
+protected:
+
+    void addEffect(EffectType type) {
+        switch (type)
+        {
+        case EffectType::Filter:
+            chain.push_back(make_unique<Filter>(BlockType::DSP, "Filter", ID));
+            
+            break;
+        case EffectType::Phaser:
+            break;
+        case EffectType::Gain:
+            break;
+        case EffectType::Reverb:
+            break;
+        case EffectType::EQ:
+            break;
+        case EffectType::Saturator:
+            break;
+        default:
+            break;
+        }
+    }
+
+    void refreshAudioPath() {
+
+
+        chain.size();
+
+        chain.back()->nextNodes.emplace();
+
+        //DSPNode* next / prev = 
+
+
+
+
+     //   chain.back().erase();
+    }
+
+    void renderInterface(float nodeW) override;
+    EffectType getType() { return EffectType::Gain; }
+    void prepareDSP(const juce::dsp::ProcessSpec& spec) override { saturator.reset(); saturator.prepare(spec);  drywet.reset(), drywet.prepare(spec); }
+    void processDSP(juce::dsp::AudioBlock<float>& block) override;
+
+private:
+
+    juce::dsp::ProcessorChain<JuceGain, JuceShaper, JuceGain> saturator;
+    juce::dsp::DryWetMixer<float> drywet;
+
+};
 
 #endif

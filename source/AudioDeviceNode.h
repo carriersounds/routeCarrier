@@ -1,6 +1,6 @@
 #ifndef AUDIO_DEVICE
 #define AUDIO_DEVICE
-#include "MainHeader.h"
+#include "mainHeader.hpp"
 #include <JuceHeader.h>
 #include "AudioNodes.h"
 

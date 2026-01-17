@@ -1,5 +1,5 @@
 #pragma once
-#include "mainHeader.h"
+#include "mainHeader.hpp"
 #include <commdlg.h>
 
 class Program;

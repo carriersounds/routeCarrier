@@ -1,6 +1,6 @@
 #ifndef AUDIO_NODES
 #define AUDIO_NODES
-#include "MainHeader.h"
+#include "mainHeader.hpp"
 #include <JuceHeader.h>
 
 
@@ -30,7 +30,7 @@ public:
 
 	// Called from main engine loop
 	virtual void prepareOutput() = 0;		// can only run if all it's inputs have been mixed into its inputbuffer (requires topo sort)
-	void sendAudioToNextNodes();
+	void sendAudioToNextNodes();			// also sends it to its gui buffer
 
 	// GUI
 	virtual void renderAsNode(float pinSize, float spacing) = 0;
@@ -54,6 +54,9 @@ protected:
 
 	// Decouple gui controls from audio using a single flag. currently only used by dsp, but will add more gui to device nodes as well prolly
 	atomic<bool> parameterChanged = false;
+
+	std::mutex guiMtx;
+	juce::AudioBuffer<float> GUIbuffer;		// for displaying output level. 
 	bool ImGui_InvertedFloatSlider(const char* name, float& param, float min, float max, const char* format = "%.2f", ImGuiSliderFlags flags = 0);
 };
 

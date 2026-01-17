@@ -148,7 +148,7 @@
     <ClInclude Include="source\GUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="source\mainHeader.h">
+    <ClInclude Include="source\mainHeader.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="source\Logger.h">

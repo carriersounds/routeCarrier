@@ -62,11 +62,9 @@ int GUI::imGuiSetup() {
     ImGuiStyle& style = ImGui::GetStyle();
 
 
-    static ImPlotColormap ranges = -1;
-    if (ranges == -1) {
-        static const ImU32 Liars_Data[3] = { 4282515870, 4294945280, 4294921472 };
-        ranges = ImPlot::AddColormap("ranges", Liars_Data, 3);
-    }
+    static const ImU32 gainCol[3] = { IM_COL32(0,0,0,0),IM_COL32(28,139,167,255),IM_COL32(90,90,90,255) };
+    ImPlot::AddColormap("gain", gainCol, 3);
+    
 
 
     d11.setup(hwnd);        // Setup Platform/Renderer backends
@@ -290,7 +288,7 @@ void GUI::setCustomStyle()
     style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.6f, 0.9647059f, 0.03137255f, 1.0f);
 
     style.Colors[ImGuiCol_Button]       = ImVec4(0.11f, 0.23f, 0.34f, 1.0f);
-    style.Colors[ImGuiCol_ButtonHovered]= ImVec4(0.48f, 1.0f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_ButtonHovered]= ImVec4(0.11f, 0.43f, 0.54f, 1.0f);
     style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.15f, 0.75f, 0.95f, 1.0f);
     style.Colors[ImGuiCol_Header]       = ImVec4(0.15f, 0.75f, 0.95f, 0.5f);
     style.Colors[ImGuiCol_HeaderHovered]= ImVec4(0.11f, 0.23f, 0.34f, 1.0f);
@@ -342,10 +340,12 @@ void GUI::renderAllModules() {
   //  renderDeviceList();
     renderToolbar();
     renderMenuBar();
-    renderLog();
+
  
     renderFIFOState();
   //  renderPreview();                    // LOCKED/ NO MOVE
+    renderLog();
+
 
     if (showDemos) {
         ImGui::ShowDemoWindow(&showDemos);
@@ -646,6 +646,16 @@ void GUI::renderToolbar() {
 
     }
 
+    if (ImGui::Button("Saturator", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Saturator);
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+    {
+        dropper = DragDropBlock::Saturator;
+        // triggers only on 1st button click
+        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+        ImGui::EndDragDropSource();
+    }
+
+
     ImGui::NewLine();
     ImGui::NewLine();
 
@@ -656,7 +666,6 @@ void GUI::renderToolbar() {
     static juce::StringArray outputs;
 
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.11f, 0.23f, 0.34f, 0.3f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.11f, 0.43f, 0.54f, 1.0f));
 
     // update audio device list every 2 seconds or on a button press
     if ((ImGui::GetFrameCount() % 120) == 0) {
@@ -709,7 +718,7 @@ void GUI::renderToolbar() {
     }
     
 
-    ImGui::PopStyleColor(2);
+    ImGui::PopStyleColor();
 
     ImGui::End();
 
@@ -773,6 +782,10 @@ void GUI::renderMixPanel() {
                 case GUI::DragDropBlock::EQ:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::EQ);
                     Logger::log("Added EQ", level_INFO);
+                    break;
+                case GUI::DragDropBlock::Saturator:
+                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Saturator);
+                    Logger::log("Added Saturator", level_INFO);
                     break;
                 default:
                     break;
@@ -1116,288 +1129,6 @@ void GUI::renderLocalNodeContextMenu(NodeID ID) {
 
 }
 
-// Custom GUI Elements - helper functions
-
-const char* GUI::getStatusString(int status) {
-
-    static const char* statusString[] = { "UNKNOWN", "WARNING", "GOOD", "EXCELLENT" };
-    if (status >= 0 && status < 4) {
-        return statusString[status];
-    }
-    return statusString[0]; // Default to UNKNOWN
-}
-
-void GUI::drawGradientBackground(ImDrawList* drwList, const char* label, ImRect bb, bool button, bool pressed, bool hovered) {
-    // Call directly after "begin" to set as background
-    ImU32 colTop;
-    ImU32 colBottom;
-
-    // button
-    const ImVec4 outlineColorBase = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-    ImU32 colOutline = ImGui::GetColorU32(outlineColorBase);
-    float rounding = 4.0f;
-    float thickness = 2.0f; // 2-pixel thickness for the border
-
-
-    if (!button) {
-        colTop = IM_COL32(4, 16, 7, 255);
-        colBottom = IM_COL32(72, 76, 74, 255);
-    }
-    else {
-        colTop = IM_COL32(72, 76, 74, 255);
-        colBottom = IM_COL32(4, 16, 7, 255);
-    }
-
-    // hover and press handler
-    if (button) {
-        float pressFactor = 1.8f; // Slightly darker when pressed
-        float hoverFactor = 1.2f; // Slightly brighter when hovered
-
-        // adjust the outline color based on hover/press state if desired
-        if (pressed) {
-            // Example: Make the outline BRIGHT YELLOW when pressed
-            colOutline = ImGui::GetColorU32(ImVec4(0.9f, 0.9f, 0.7f, 1.0f));
-        }
-        else if (hovered) {
-            // Example: Make the outline YELLOW when hovered
-            colOutline = ImGui::GetColorU32(ImVec4(0.8f, 0.8f, 0.0f, 1.0f));
-        }
-    }
-
-
-    // 4. Draw Background
-    drwList->AddRectFilledMultiColor(
-        bb.Min,
-        bb.Max,
-        colBottom, // Color Top-Left (actually the bottom of the gradient)
-        colBottom, // Color Top-Right
-        colTop,    // Color Bottom-Right (actually the top of the gradient)
-        colTop    // Color Bottom-Left
-    );
-
-    // 4.1 Draw Outline (if button)
-    if (button) {
-        drwList->AddRect(
-            bb.Min,
-            bb.Max,
-            colOutline,
-            rounding,
-            ImDrawFlags_None, // Flags (can be used to specify sides)
-            thickness
-        );
-    }
-
-}
-
-void GUI::drawAnalogDial_3sections(const char* name, float ranges[], float value, ImVec2 plotSize, bool reverseColors) {
-
-    const char* labels1[] = { "Section 1","Section 2","Section 3" };
-    static ImPlotColormap stopLight = -1;
-    static ImPlotColormap blackBG;
-    static float radius = 0.4f;
-    static ImVec2 center = { 0.5f,0.5f };
-    static float angle0 = -135;
-
-    // Color map
-    if (stopLight == -1) {
-        ImU32 stopLight_data[3] = { IM_COL32(0, 255, 0, 255), IM_COL32(200, 200, 0, 255), IM_COL32(255, 0, 0, 255) };
-        if (reverseColors) {
-            ImU32 temp = stopLight_data[0];
-            stopLight_data[0] = stopLight_data[2];
-            stopLight_data[2] = temp;
-        }
-        stopLight = ImPlot::AddColormap("stoplight", stopLight_data, 3);
-
-        ImU32 blegh[] = { IM_COL32(10, 10, 10, 255),IM_COL32(10, 10, 10, 255) };
-
-        blackBG = ImPlot::AddColormap("black", blegh, 2);
-
-    }
-
-    if (ImPlot::BeginPlot(name, plotSize, ImPlotFlags_Equal | ImPlotFlags_CanvasOnly| ImPlotFlags_NoTitle | ImPlotFlags_NoMouseText | ImPlotFlags_NoLegend)) {
-        ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
-        ImPlot::SetupAxesLimits(0, 1, 0, 1, ImPlotCond_Always);
-        float plot_converted_angle0 = angle0 + 90;
-
-        ImPlot::PushColormap("stoplight");
-        ImPlot::PlotPieChartAsDial(labels1, ranges, 3, center.x, center.y, radius, "%.2f", plot_converted_angle0);
-        ImPlot::PopColormap();
-
-        ImPlot::PushColormap("black");
-        const char* dumby[] = { "1","2" };
-        static float dumval[] = { 0.5f,0.5f };
-        ImPlot::PlotPieChart(dumby, dumval, 2, center.x, center.y, radius * 0.8f, " ", 0, ImPlotPieChartFlags_Normalize);
-        ImPlot::PopColormap();
-
-        float start_angle_radians = angle0 * 2.0f * IM_PI / 360.0;
-
-        // Text markers
-        for (int i = 0; i < 4; ++i) {
-            const float percent = ranges[i] / ranges[3]; // value over max   (float 0 - 1)
-            float angle = start_angle_radians - (IM_PI * 1.5f * percent); // MINUS BECAUSE ITS INVERTED                   
-            ImVec2 pos = { center.x + radius * 1.15f * cos(angle), center.y + radius * 1.15f * sin(angle) };   // polar to cartesian
-            string plottertext = std::format("{:.0f}", ranges[i]);
-            ImPlot::PlotText(plottertext.data(), pos.x, pos.y);
-        }
-        ImVec2 titlePos = { center.x,center.y - (radius * 0.5f) };
-        ImPlot::PlotText(name, titlePos.x,titlePos.y);
-
-        ImVec2 lineVectorPoint;
-        float v_Percent = value / ranges[3];
-        float v_Angle = start_angle_radians - (IM_PI * 1.5f * v_Percent);
-        lineVectorPoint = { center.x + radius * cos(v_Angle), center.y + radius * sin(v_Angle) };
-        float Xs[] = { center.x,lineVectorPoint.x };
-        float Ys[] = { center.y,lineVectorPoint.y };
-        ImPlot::SetNextLineStyle(ImVec4(255, 255, 255, 255), 4.0f);
-        ImPlot::PlotLine("CV", Xs, Ys, 2, ImPlotLineFlags_Segments);
-        ImPlot::EndPlot();
-    }
-
-}
-
-void GUI::drawAnalogDial_5sections(const char* name, float ranges[], float value, ImVec2 plotSize) {
-
-    const char* labels5[] = { "Section 1","Section 2","Section 3", "Section 4", "Section 5"};
-    static ImPlotColormap stopLight5 = -1;
-    static ImPlotColormap blackBG5;
-    static float radius = 0.4f;
-    static ImVec2 center = { 0.5f,0.5f };
-    static float angle0 = -135;
-
-    // Color map
-    if (stopLight5 == -1) {
-        ImU32 stopLight_data[5] = { IM_COL32(255, 0, 0, 255),IM_COL32(200, 200, 0, 255),IM_COL32(0, 255, 0, 255), IM_COL32(200, 200, 0, 255), IM_COL32(255, 0, 0, 255) };
-
-        stopLight5 = ImPlot::AddColormap("stoplight5", stopLight_data, 5);
-
-        ImU32 blegh[] = { IM_COL32(10, 10, 10, 255),IM_COL32(10, 10, 10, 255) };
-        blackBG5 = ImPlot::AddColormap("black5", blegh, 2);
-
-    }
-
-    if (ImPlot::BeginPlot(name, plotSize, ImPlotFlags_Equal | ImPlotFlags_CanvasOnly | ImPlotFlags_NoTitle | ImPlotFlags_NoMouseText | ImPlotFlags_NoLegend)) {
-        ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
-        ImPlot::SetupAxesLimits(0, 1, 0, 1, ImPlotCond_Always);
-        float plot_converted_angle0 = angle0 + 90;
-
-        ImPlot::PushColormap("stoplight5");
-        ImPlot::PlotPieChartAsDial(labels5, ranges, 5, center.x, center.y, radius, "%.2f", plot_converted_angle0);
-        ImPlot::PopColormap();
-
-        ImPlot::PushColormap("black5");
-        const char* dumby[] = { "1","2" };
-        static float dumval[] = { 0.5f,0.5f };
-        ImPlot::PlotPieChart(dumby, dumval, 2, center.x, center.y, radius * 0.8f, " ", 0, ImPlotPieChartFlags_Normalize);
-        ImPlot::PopColormap();
-
-        float start_angle_radians = angle0 * 2.0f * IM_PI / 360.0;
-
-        // Text markers
-        for (int i = 0; i < 6; ++i) {
-            const float percent = ranges[i] / ranges[5]; // value over max   (float 0 - 1)
-            float angle = start_angle_radians - (IM_PI * 1.5f * percent); // MINUS BECAUSE ITS INVERTED                   
-            ImVec2 pos = { center.x + radius * 1.15f * cos(angle), center.y + radius * 1.15f * sin(angle) };   // polar to cartesian
-            string plottertext = std::format("{:.0f}", ranges[i]);
-            ImPlot::PlotText(plottertext.data(), pos.x, pos.y);
-        }
-        ImVec2 titlePos = { center.x,center.y - (radius * 0.5f) };
-        ImPlot::PlotText(name, titlePos.x, titlePos.y);
-
-        ImVec2 lineVectorPoint;
-        float v_Percent = value / ranges[5];
-        float v_Angle = start_angle_radians - (IM_PI * 1.5f * v_Percent);
-        lineVectorPoint = { center.x + radius * cos(v_Angle), center.y + radius * sin(v_Angle) };
-        float Xs[] = { center.x,lineVectorPoint.x };
-        float Ys[] = { center.y,lineVectorPoint.y };
-        ImPlot::SetNextLineStyle(ImVec4(255, 255, 255, 255), 4.0f);
-        ImPlot::PlotLine("CV", Xs, Ys, 2, ImPlotLineFlags_Segments);
-        ImPlot::EndPlot();
-    }
-
-}
-
-bool GUI::customImageButton(iconData& icon, const string& label, const string& key, ImVec2 btnSize) {
-
-    ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-
-    // --- 1. Split Multi-Line Label ---
-    std::vector<std::string> labelLines;
-    size_t start = 0;
-    size_t end = label.find('\n');
-    while (end != std::string::npos) {
-        labelLines.push_back(label.substr(start, end - start));
-        start = end + 1;
-        end = label.find('\n', start);
-    }
-    labelLines.push_back(label.substr(start));
-
-    float totalLabelHeight = 0.0f;
-    for (const auto& line : labelLines) {
-        totalLabelHeight += ImGui::CalcTextSize(line.c_str()).y;
-    }
-
-    float lineHeight = ImGui::GetTextLineHeight();          // Calculate the height of a single line of text for spacing
-
-    // --- 2. Calculate Bounding Box and Reserve Space ---
-    const ImVec2 size = btnSize;
-    const ImGuiID id = ImGui::GetID(label.c_str());
-    const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-    ImRect bb(cursorPos, cursorPos + size);
-
-    ImGui::ItemSize(bb, style.FramePadding.y);
-    if (!ImGui::ItemAdd(bb, id)) {
-        return false;
-    }
-
-    // --- 3. Handle State and Drawing (Background) ---
-    bool hovered = ImGui::IsItemHovered();
-    bool pressed = ImGui::IsItemActive();
-    bool clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-    drawGradientBackground(drawList, label.c_str(), bb, true, pressed, hovered);
-
-    // --- 4. Calculate Positions (Vertical Stacking) ---
-    ImVec2 innerMin = bb.Min + style.FramePadding;
-    float innerWidth = bb.Max.x - bb.Min.x - style.FramePadding.x * 2.0f;
-    ImVec2 keySize = ImGui::CalcTextSize(key.c_str());
-
-    // Calculate the total content height and spacing
-    float contentHeight = keySize.y + icon.size.y + totalLabelHeight;
-    float freeSpace = size.y - contentHeight - (style.FramePadding.y * 2.0f);
-
-    float vSpace = freeSpace / 3.0f;    // Divide the free space into segments (above key, key/icon, icon/label)
-
-    // --- Top Text (Key) - Icon (Middle) - Bottom Text (Label)
-    ImVec2 keyPos = ImVec2(innerMin.x + (innerWidth - keySize.x) * 0.5f, bb.Min.y + style.FramePadding.y + vSpace); // Center X 
-    ImVec2 iconPos = ImVec2(innerMin.x + (innerWidth - icon.size.x) * 0.5f, keyPos.y + keySize.y + vSpace);         // Center X,Start position for the first line of the label                                                                                                                
-    ImVec2 labelStartPos = ImVec2(0.0f, iconPos.y + icon.size.y + vSpace);                                         // X will be calculated per-line
-
-    // 5. Draw Content
-    // Draw Top Text (Key)
-    ImGui::RenderText(keyPos, key.c_str());
-
-    // Draw Icon (Image)
-    drawList->AddImage(
-        icon.pixbuf,
-        iconPos,
-        iconPos + icon.size,
-        ImVec2(0.0f, 0.0f), // uv0
-        ImVec2(1.0f, 1.0f)  // uv1
-    );
-
-    // Draw Bottom Text (Label Lines)
-    ImVec2 currentLabelPos = labelStartPos;
-    for (const auto& line : labelLines) {
-        ImVec2 lineSize = ImGui::CalcTextSize(line.c_str());
-        currentLabelPos.x = innerMin.x + (innerWidth - lineSize.x) * 0.5f; // Calculate X position to center this specific line
-        ImGui::RenderText(currentLabelPos, line.c_str());
-        currentLabelPos.y += lineSize.y;        // Move the Y position down for the next line
-    }
-
-    return hovered && clicked;
-}
 
 // ------------- BACKEND -----------------
 

@@ -21,7 +21,7 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 
     // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX =====
  
-    renderInterface();     
+    renderInterface(w);     
     ImGui::NewLine();
 
     // ============== INPUT PIN ============== 

@@ -3,7 +3,7 @@
 This is a work-in-progress modular audio routing tool.
 This program is built around a node editor where audio devices can be connected by a graph structure.
 
-![Interface Demo](screenshots/screenshot8.png)
+![Interface Demo](screenshots/screenshot10_nowWithEQ.png)
 
 ## Who is it for?
 

@@ -10,14 +10,10 @@ public:
 
     FileIO(Program* input);
 
-    // Loading Icons for GUI
-
-
     // struct setup in separate file
     // saveConfig(Setup& currentSetup);
     // Setup loadConfig();
     // maybe give it access to fileIO and build whole structure there
-
 
     // offline saving and loading
     void selectFile(bool folder, int recursive, bool openDialog = true, string extFileLoad = "");
@@ -36,7 +32,7 @@ public:
     int currentImage;
     vector<string> allFilesInScope;
 
-    string lastSavedImage;
+    string lastSavedFile;
 
     std::map<string, iconData> icons;      // LRI ICONS
 

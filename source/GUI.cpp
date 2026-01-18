@@ -272,9 +272,7 @@ void GUI::setCustomStyle()
     style.Colors[ImGuiCol_PopupBg] = ImVec4(0.078431375f, 0.08627451f, 0.101960786f, 1.0f);
     style.Colors[ImGuiCol_Border] = ImVec4(0.15686275f, 0.16862746f, 0.19215687f, 1.0f);
     style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.078431375f, 0.08627451f, 0.101960786f, 1.0f);
-    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.11372549f, 0.1254902f, 0.15294118f, 1.0f);
-    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.15686275f, 0.16862746f, 0.19215687f, 1.0f);
-    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.15686275f, 0.16862746f, 0.19215687f, 1.0f);
+
     style.Colors[ImGuiCol_TitleBg] = ImVec4(0.047058824f, 0.05490196f, 0.07058824f, 1.0f);
     style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.047058824f, 0.05490196f, 0.07058824f, 1.0f);
     style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.078431375f, 0.08627451f, 0.101960786f, 1.0f);
@@ -292,6 +290,13 @@ void GUI::setCustomStyle()
     style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.15f, 0.75f, 0.95f, 1.0f);
     style.Colors[ImGuiCol_Header]       = ImVec4(0.15f, 0.75f, 0.95f, 0.5f);
     style.Colors[ImGuiCol_HeaderHovered]= ImVec4(0.11f, 0.23f, 0.34f, 1.0f);
+
+    // for sliders
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.11372549f, 0.1254902f, 0.15294118f, 1.0f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.15686275f, 0.16862746f, 0.19215687f, 1.0f);
+    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.15686275f, 0.16862746f, 0.19215687f, 1.0f);
+
+    style.Colors[ImGuiCol_TableBorderLight] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);   // NO Table Dividers, so we can leave them resizable
 
 
     style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.078431375f, 0.08627451f, 0.101960786f, 1.0f);
@@ -312,7 +317,7 @@ void GUI::setCustomStyle()
     style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.15686275f, 0.18431373f, 0.2509804f, 1.0f);
     style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.047058824f, 0.05490196f, 0.07058824f, 1.0f);
     style.Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.047058824f, 0.05490196f, 0.07058824f, 1.0f);
-    style.Colors[ImGuiCol_TableBorderLight] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+
     style.Colors[ImGuiCol_TableRowBg] = ImVec4(0.11764706f, 0.13333334f, 0.14901961f, 1.0f);
     style.Colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.09803922f, 0.105882354f, 0.12156863f, 1.0f);
     style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.9372549f, 0.9372549f, 0.9372549f, 1.0f);
@@ -636,7 +641,7 @@ void GUI::renderToolbar() {
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("EQ 4", { 180,80 })) prog->audio.addNewDSPNode(EffectType::EQ);
+    if (ImGui::Button("Graphic EQ", { 180,80 })) prog->audio.addNewDSPNode(EffectType::EQ);
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
     {
         dropper = DragDropBlock::EQ;
@@ -763,27 +768,27 @@ void GUI::renderMixPanel() {
 
             switch (dragPayload)
             {
-                case GUI::DragDropBlock::Device:
+                case DragDropBlock::Device:
                     nodeToGiveInitPosition = prog->audio.addNewDeviceNode(grabbedType, grabbedDevice);
                     Logger::log("Added Device: " + grabbedDevice, level_INFO);
                     break;
-                case GUI::DragDropBlock::Filter:
+                case DragDropBlock::Filter:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Filter);
                     Logger::log("Added Filter",level_INFO);
                     break;
-                case GUI::DragDropBlock::Gain:
+                case DragDropBlock::Gain:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Gain);
                     Logger::log("Added Gain", level_INFO);
                     break;
-                case GUI::DragDropBlock::Reverb:
+                case DragDropBlock::Reverb:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Reverb);
                     Logger::log("Added Reverb", level_INFO);
                     break;
-                case GUI::DragDropBlock::EQ:
+                case DragDropBlock::EQ:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::EQ);
                     Logger::log("Added EQ", level_INFO);
                     break;
-                case GUI::DragDropBlock::Saturator:
+                case DragDropBlock::Saturator:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Saturator);
                     Logger::log("Added Saturator", level_INFO);
                     break;
@@ -864,10 +869,10 @@ void GUI::renderMixPanel() {
     node::EndDelete();
     node::EndCreate();
 
+    // Handle right-click ID, since it has to be outside of the node context
     nodeHovered = ed::GetHoveredNode().Get();        
     node::End();
-
-    if (nodeHovered) nodeRightClicked = nodeHovered;    // actually assign node value
+    if (nodeHovered) nodeRightClicked = nodeHovered;   
     
     // Right-click menu
     if ((nodeHovered || menuOpen) && ImGui::BeginPopupContextItem("context_menu")) {
@@ -1292,190 +1297,3 @@ void d11backend::CleanupRenderTarget()
 }
 
 
-// UNUSED GRAPHS (incl spectrogram)
-#if 0
-
-
-// Small histogram
-
-if (advancedView)
-if (ImPlot::BeginPlot("Histogramme", ImVec2(-1, 180), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend)) {
-
-    float maxPeak = 0;
-    float maxPeakIndex = 0;
-
-    for (size_t i = 0; i < 256; i++)
-    {
-        histogramContent[i] = (float)guiBuffer.histogram[i];
-
-        if (maxPeak < histogramContent[i]) {
-            maxPeak = histogramContent[i];
-            maxPeakIndex = i;
-        }
-    }
-    ImPlot::SetupAxes(nullptr, nullptr, 0, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoTickLabels);
-    ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
-    ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
-    ImPlot::PlotBars("Pixel Histogram", histogramContent.data(), 255);
-    ImPlot::PlotInfLines("Effective Threshold", &prog->calibrationRegister[caliParamIndex::threshold].value, 1);
-    ImPlot::EndPlot();
-}
-
-
-// BRIGHTNESS RANGE
-
-// Variance and deviation 
-            // Calculate the height of each segment
-if (ImPlot::BeginPlot("Data Variance", ImVec2(-1, -1), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
-
-    const char* labels[] = { "Min", "Range", "Max" };
-    static float dataBr[3];
-    dataBr[0] = minBright;
-    dataBr[1] = maxBright - minBright;
-    dataBr[2] = 255 - maxBright;
-    ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels);
-    ImPlot::SetupAxisLimits(ImAxis_X1, 1, 3);
-    ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 300);
-
-    // Brightness variance
-    ImPlot::PushColormap("ranges");
-    ImPlot::PlotBarGroups(labels, dataBr, 3, 1, 1.0f, 2.0f, ImPlotBarGroupsFlags_Stacked);
-    ImPlot::PopColormap();
-    ImPlot::PlotScatter("a", &two, &prog->calibrationRegister[caliParamIndex::brightness].value, 1);              // brightPoint 
-    string currentBrighttxt = std::format("{:.2f}", prog->calibrationRegister[caliParamIndex::brightness].value);
-    string brightVarianceText = (string)"Variance\n = " + std::format("{:2.2f}", prog->calibrationRegister[caliParamIndex::br_variance].value);
-    ImPlot::PlotText("Brightness", two, 290.0f);
-    ImPlot::PlotText(currentBrighttxt.data(), two, std::clamp(prog->calibrationRegister[caliParamIndex::brightness].value, 0.0f, 150.0f) + 5.0f);  // brightText
-    ImPlot::PlotText(brightVarianceText.data(), two, 265.0f, { 0,0 });
-
-    ImPlot::EndPlot();
-}
-
-     SHADED HISTOGRAM
-    if (calibrationMode) {
-
-        static float y_data[256], x_data[256];
-        for (size_t i = 0; i < 256; i++)
-        {
-            x_data[i] = (float)i;
-            y_data[i] = (i > 15 && i < 50) ? maxPeak : 0;
-        }
-
-        if (maxPeakIndex > 15 && maxPeakIndex < 50) {
-            ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(20, 200, 20, 100));
-            ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.8f);
-        }
-        else {
-            ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 20, 20, 60));
-            ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.3f);
-        }
-        ImPlot::PlotShaded("Highlight", x_data, y_data, 256, 0);
-        ImPlot::PopStyleColor(1);
-        ImPlot::PopStyleVar();
-    }
-    
-
-
-// OLD FOCUS BAR
-static float maxFocus = 1.0f;
-maxFocus = max(guiImagestats.focus, maxFocus);
-double edge = 1.5f * (double)maxFocus;
-if (!holdValues && EVERY_5_SECONDS) maxFocus = 0;
-
-if (ImPlot::BeginPlot("e", ImVec2(-1, 250), ImPlotFlags_NoTitle)) {
-
-    ImPlot::SetupLegend(ImPlotLocation_North, ImPlotLegendFlags_Outside | ImPlotLegendFlags_Horizontal);
-    ImPlot::SetupAxes(nullptr, nullptr, 0 | ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoGridLines);
-    ImPlot::SetupAxisLimits(ImAxis_X1, -1, 1);
-    ImPlot::SetupAxisLimits(ImAxis_Y1, 0, edge, ImPlotCond_Always);
-
-
-    // GOOD FOCUS THING
-    ImPlot::SetNextFillStyle(ImVec4(1, 1, 1, 0.2), 1);
-    ImPlot::SetNextLineStyle(ImVec4(1, 1, 1, 0.5), 1);
-
-    if (localStatCopy.focus > 4.8f) {
-        ImPlot::SetNextFillStyle(ImVec4(0.80, 1, 1, 0.7), 1);
-        ImPlot::SetNextLineStyle(ImVec4(0.40, 0.4, 1, 0.8), 4);
-    }
-
-    ImPlot::PlotBars("Focus Quality", &zero, &localStatCopy.focus, 1, 1);
-    string focusTxt = std::format("{:.2f}", localStatCopy.focus);
-    ImPlot::PlotText(focusTxt.data(), zero, localStatCopy.focus + 0.5f);
-
-    // target focus
-    ImPlot::SetNextLineStyle(ImVec4(0.40, 1, 0.4, 1), 2);
-    ImPlot::PlotInfLines("Target", &targetFocus, 1, ImPlotInfLinesFlags_Horizontal);
-
-
-    //  ImPlot::PlotInfLines("Max focus", &maxFocus, 1, ImPlotInfLinesFlags_Horizontal);
-    ImPlot::EndPlot();
-
-
-
-
-}
-
-
-// HISTOGRAM COPY
-
-// Histogram copy
-if (ImPlot::BeginPlot("Histogramme", ImVec2(-1, -1), ImPlotFlags_NoTitle)) {
-
-    float maxPeak = 0;
-    float maxPeakIndex = 0;
-
-    for (size_t i = 0; i < 256; i++)
-    {
-        histogramContent[i] = (float)guiBuffer.histogram[i];
-
-        if (maxPeak < histogramContent[i]) {
-            maxPeak = histogramContent[i];
-            maxPeakIndex = i;
-        }
-    }
-
-
-    ImPlot::SetupAxes(nullptr, nullptr, 0, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoTickLabels);
-    ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
-    ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
-    ImPlot::PlotBars("Pixel Histogram", histogramContent.data(), 255);
-    ImPlot::PlotInfLines("Effective Threshold", &tre, 1);
-    //ImPlot::PlotInfLines("Average brightness", &guiImagestats.pixelAverage, 1);
-
-    ImPlot::EndPlot();
-}
-
-tRight;
-
-
-
-// SPECTROGRAM
-
-// Histogram History
-if (ImPlot::BeginPlot("Histogram history", ImVec2(-1, 275), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
-
-    static HistBuffer histMap;
-    histMap.addHist(histogramContent);
-    ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels);
-    ImPlot::SetupAxisLimits(ImAxis_Y1, 0, HIST_DEPTH, ImGuiCond_Always);
-    ImPlot::SetupAxisLimits(ImAxis_X1, 0, HIST_WIDTH, ImGuiCond_Always);
-
-    // ( Jet, Plasma, Viridis)
-    ImPlot::PushColormap(ImPlotColormap_Plasma);
-
-    ImPlot::PlotHeatmap(
-        "Histogram-gram",
-        histMap.flatData.data(),       // Pointer to the flattened data
-        HIST_DEPTH,                    // Number of rows (time slices currently in buffer)
-        HIST_WIDTH,                    // Number of columns (256 bins per slice)
-        0, 5.5f,                       // color range
-        nullptr,                       // Value format string (e.g., "%.2f")
-        ImPlotPoint(0, 0),         // Bottom-left corner of the heatmap
-        ImPlotPoint(HIST_WIDTH - 1, HIST_DEPTH) // Top-right corner of the heatmap
-    );
-
-    ImPlot::PopColormap(); // Pop the colormap after plotting
-    ImPlot::EndPlot();
-}
-#endif

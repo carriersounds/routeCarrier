@@ -37,16 +37,6 @@ struct d11backend {
 class GUI {
 public:
 
-    enum class DragDropBlock {
-        None,
-        Device,
-        Filter,
-        Gain,
-        Reverb,
-        EQ,
-        Saturator
-    };
-
     GUI(Program* prog);
     ~GUI();
     static inline d11backend d11;

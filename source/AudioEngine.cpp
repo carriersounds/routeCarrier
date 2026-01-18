@@ -4,7 +4,7 @@
 
 AudioEngine::AudioEngine(Program* prog) : 
     prog(prog), nullDevice(BlockType::NullDevice,"",1000){
-
+    mainOutputReady = false;
     uniqueID = 1000;    // null device starts at ID = 1000
     audio_engine_on = true;
     audiothread = std::thread(&AudioEngine::run, this);
@@ -22,7 +22,11 @@ void AudioEngine::run() {
 
     while (audio_engine_on) {
            
-        requestNewAudioBlock.wait();                // wait for main output fifo to empty below BLOCKSIZE
+        if (mainOutputReady)
+            requestNewAudioBlock.wait();                // wait for main output fifo to empty below BLOCKSIZE
+        else
+            std::this_thread::sleep_for(10.60ms);       // simulate tickrate for routing previews. 48khz at 512 samples = 10.66ms (assuming 60us processing)
+
         nodeLock.lock();
 
         for (auto& node : sortedNodes) {
@@ -47,7 +51,7 @@ BaseID AudioEngine::getNewID(Identifier type) {
     if (type == Identifier::node) idtype = "node";
     if (type == Identifier::pin)  idtype = "pin";
 
-   Logger::log("new " + idtype +", ID: " + to_string(uniqueID), level_DEBUG);
+    Logger::log("new " + idtype +", ID: " + to_string(uniqueID), level_DEBUG);
 
     return uniqueID;
 }
@@ -187,6 +191,7 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     if (devptr->getBlockType() == BlockType::OutputDevice) {
         devptr->setTriggerAddress(&requestNewAudioBlock);
         selectMainOutput(blockID);
+        mainOutputReady = true;
     }
 
     topologicalSortNodes();                                 // add to sortedNodes
@@ -214,7 +219,7 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
         nodes.emplace(blockID, make_unique<Reverb>(BlockType::DSP, "Reverb", blockID));
         break;
     case EffectType::EQ:
-        nodes.emplace(blockID, make_unique<Equalizer>(BlockType::DSP, "EQ 4", blockID));
+        nodes.emplace(blockID, make_unique<Equalizer>(BlockType::DSP, "Graphic Equalizer", blockID));
         break;
     case EffectType::Saturator:
         nodes.emplace(blockID, make_unique<Saturator>(BlockType::DSP, "Saturator", blockID));

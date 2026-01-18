@@ -82,6 +82,7 @@ public:
     bool audio_engine_on;
 
 private:
+    bool mainOutputReady;
     int numDevices = 0;
     std::thread audiothread;
     std::mutex nodeLock;

@@ -35,10 +35,7 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
  
 void DeviceNode::renderAsNode(float pinSize, float spacing) {
 
-    // ++ ADD LEVEL METER + GAIN
-
-
-         // Draw input Node
+    // Adjust stereo/mono/channelcount split
     
     // ============== TITLE CARD ==============
     node::BeginNode(ID);
@@ -60,14 +57,20 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
 
     ImGui::Dummy(ImVec2(0, 6));
 
-    guiMtx.lock();
-    tools::drawGainMonitorHoriz(GUIbuffer, w, ID);
-    guiMtx.unlock();
-
-    ImGui::Dummy(ImVec2(0, 10));
-
     if (isInput()){
 
+        guiMtx.lock();
+        tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+        guiMtx.unlock();
+
+        ImGui::SameLine();
+
+        INDENT_NEXT
+        string knob = to_string(ID) + "##Input Gain";
+        ImGui::PushID(knob.c_str());
+        if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+        ifDoubleClicked{ (deviceGain_dB = 0.0f); parameterChanged.store(true); }
+        ImGui::PopID();
         // ============== OUTPUT PIN ==============        
         const char* labelout = "FROM DEVICE        ";
         ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
@@ -88,18 +91,36 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     else if(isOutput())     // Draw output Node
     {
 
-        // ============== PIN ==============
+        INDENT_NEXT
+        string knob = to_string(ID) + "##Output Gain";
+        ImGui::PushID(knob.c_str());
+        if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+        ifDoubleClicked{ (deviceGain_dB = 0.0f); parameterChanged.store(true); }
+        ImGui::PopID();
+
         const char* labelin = "    TO DEVICE";
         ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
+
+
+        ImGui::SameLine(0,30);
+        
+        guiMtx.lock();
+        tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+        guiMtx.unlock();
+
+
+
+        // ============== PIN ==============
         node::BeginPin(inputPin, ed::PinKind::Input);
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 2 * spacing);
-        
         // Pin icon  
         ImDrawList* dli = ImGui::GetWindowDrawList();
         ImVec2 posi = ImGui::GetCursorScreenPos();
         dli->AddCircleFilled(ImVec2(posi.x, posi.y + textSizeIn.y * 0.5f), textSizeIn.y * 0.5f, IM_COL32(30, 150, 230, 255));
         ImGui::TextUnformatted(labelin);
         node::EndPin();
+
+
 
     }     
       
@@ -217,8 +238,17 @@ void DeviceNode::prepareOutput() {
 
     if (m_blockType == BlockType::InputDevice) {       
         readFromFifoTo(outputBuffer.getArrayOfWritePointers(), BLOCKSIZE);
+
+        outputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB));
+
+        if (parameterChanged.load()) {     
+            parameterChanged.store(false);
+        }
+            
     }
     else if (m_blockType == BlockType::OutputDevice) {
+
+        inputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB));
         copyBuffer(&outputBuffer, &inputBuffer);    
         writeToFifoFrom(inputBuffer.getArrayOfReadPointers(), BLOCKSIZE);
     }
@@ -305,10 +335,12 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         }
 
        if(trigger != nullptr && hardwareFIFO.getNumReady() < BLOCKSIZE)
-        trigger->signal();                                                  // trigger engine that the output fifo is getting empty! needs a refill 
+        trigger->signal();                                                  
+       
+       // trigger engine that the output fifo is getting empty! needs a refill     
        // fifo should be filled within 1 output sample period
        // get timestampPair?
-     //  IAudioClock::GetPosition()
+       //  IAudioClock::GetPosition()
 
 
     }

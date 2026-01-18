@@ -13,8 +13,7 @@ public:
     ~DSPNode(){}
 
     // Audio Processor 
-    void prepareOutput() override { process(); }
-    void process();
+    void prepareOutput() override;
     void prepareToPlay(double sampleRate, int blockSize) override;
     void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override; 
 

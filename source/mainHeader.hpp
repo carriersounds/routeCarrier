@@ -1,9 +1,6 @@
-// MAIN INCLUDE HEADER FOR LIBRARIES AND GLOBAL DEFINES
 #ifndef MAIN_HEADER
-#define MAIN_HEADER
-#define WIN32_LEAN_AND_MEAN
-#define _CRT_SECURE_NO_WARNINGS
-
+#define MAIN_HEADER     // MAIN INCLUDE HEADER FOR LIBRARIES AND GLOBAL DEFINES
+                        //#pragma comment(lib, "Ws2_32.lib")
 #include <string>
 #include <sstream>
 #include <d3d11.h>
@@ -42,7 +39,8 @@ namespace node = ax::NodeEditor;
 #define BLOCKSIZE 512
 #define FIFOSIZE 2048
 
-#pragma comment(lib, "Ws2_32.lib")
+#define INDENT_NEXT ImGui::Dummy({ 10,10 }); ImGui::SameLine();
+#define ifDoubleClicked if (ImGui::IsItemActive() && ImGui::IsMouseDoubleClicked(0))
 
 using std::vector;
 using std::string;
@@ -53,8 +51,6 @@ using std::chrono::high_resolution_clock;
 using namespace std::literals::chrono_literals;
 using std::atomic;
 namespace fs = std::filesystem;
-typedef vector<BYTE> bytearray;
-typedef vector<uint16_t> int16array;
 typedef std::chrono::high_resolution_clock::time_point timepoint;
 
 typedef size_t NodeID;
@@ -72,6 +68,7 @@ namespace tools {
     {
         vec.erase(std::remove(vec.begin(), vec.end(), value), vec.end());
     }
+    
     template <typename T>
     void RemoveIndexFromVector(std::vector<T>& vec, int idx)
     {
@@ -96,8 +93,7 @@ namespace tools {
         }
     }
 
-    // Variance and deviation 
-    inline void drawGainMonitorHoriz(juce::AudioBuffer<float>& buffer, float drawWidth, BaseID ID) {
+    inline void drawGainMonitorHoriz(juce::AudioBuffer<float>& buffer, float drawWidth, NodeID ID) {
 
         if (drawWidth < 10) return;    // might glitch on the 1st frame
 
@@ -141,8 +137,7 @@ namespace tools {
         ImPlot::PopStyleVar();
     }
 
-    // Variance and deviation 
-    inline void drawGainMonitorVertic(juce::AudioBuffer<float>& buffer, float drawLength, BaseID xtraID) {
+    inline void drawGainMonitorVertic(juce::AudioBuffer<float>& buffer, float drawLength, NodeID xtraID) {
 
         if (drawLength < 10) return;    // might glitch on the 1st frame
 
@@ -154,10 +149,12 @@ namespace tools {
             rmsDB = -lowerLimit; peakDB = -lowerLimit;
         }
 
-        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, { 10,0 });
+        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, { 0,10 });
         ImGui::PushStyleColor(ImGuiCol_FrameBg, { 0,0,0,0 });
 
-        if (ImPlot::BeginPlot("Brightness & Threshold variance", ImVec2(60, drawLength), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
+        string lvlID = "lv" + to_string(xtraID);
+
+        if (ImPlot::BeginPlot(lvlID.c_str(), ImVec2(60, drawLength), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
 
             // Calculate the height of each segment (NOT POSITION!). position is calculated from 0 i suppose
             float dataBr[3];
@@ -180,6 +177,18 @@ namespace tools {
         ImPlot::PopStyleVar();
     }
 
+    inline bool drawInvertedFloatSlider(const char* name, float* param, NodeID ID, float min, float max, const char* format = "%.2f", ImGuiSliderFlags flags = 0) {
+
+        ImGui::Text(name);
+        ImGui::SameLine(60);
+        if (ImGui::SliderFloat(string("##" + (string)name + to_string(ID)).c_str(), param, min, max, format, flags))
+            return true;
+        else
+            return false;
+
+        // "paramChanged = true" is not implemented here, as we might want to do some calculations or interpretation
+        // on the parameters first before flagging the parameters as changed to the processor
+    }
 
     // Custom GUI Elements - helper functions
 
@@ -370,13 +379,16 @@ namespace tools {
         }
 
     }
-
 }
 
-enum class ParamType {
-    Integer,
-    Float,
-    Bool
+enum class DragDropBlock {
+    None,
+    Device,
+    Filter,
+    Gain,
+    Reverb,
+    EQ,
+    Saturator
 };
 
 enum class EffectType {
@@ -388,6 +400,15 @@ enum class EffectType {
     EQ,
     Saturator
 };
+
+enum class BlockType {
+    NullDevice,
+    InputDevice,
+    OutputDevice,
+    DSP,
+    FileInput
+};
+
 
 struct BlockLink {
     BlockLink(node::LinkId id , node::PinId left, node::PinId right):ID(id), ID_left(left), ID_right(right){}
@@ -410,13 +431,6 @@ enum class Identifier {
     pin  = 2
 };
 
-enum class BlockType {
-    NullDevice,
-    InputDevice,
-    OutputDevice,
-    DSP,
-    FileInput
-};
 
 enum class blockModifier {
     addNew,
@@ -424,14 +438,7 @@ enum class blockModifier {
     remove
 };
 
-enum autoSaveModifiers {
-    save_all = -1,
-    save_defects = 1,
-    save_disabled = 0
-};
-
 enum class UI {
-    calibration_module,
     fullscreen_admin,
     hide,
     unhide,
@@ -525,5 +532,194 @@ struct Counter {
         return std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
     }
 };
+
+// UNUSED GUI TOOLS from old project
+#if 0
+
+
+// Small histogram
+
+if (advancedView)
+if (ImPlot::BeginPlot("Histogramme", ImVec2(-1, 180), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend)) {
+
+    float maxPeak = 0;
+    float maxPeakIndex = 0;
+
+    for (size_t i = 0; i < 256; i++)
+    {
+        histogramContent[i] = (float)guiBuffer.histogram[i];
+
+        if (maxPeak < histogramContent[i]) {
+            maxPeak = histogramContent[i];
+            maxPeakIndex = i;
+        }
+    }
+    ImPlot::SetupAxes(nullptr, nullptr, 0, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoTickLabels);
+    ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+    ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
+    ImPlot::PlotBars("Pixel Histogram", histogramContent.data(), 255);
+    ImPlot::PlotInfLines("Effective Threshold", &prog->calibrationRegister[caliParamIndex::threshold].value, 1);
+    ImPlot::EndPlot();
+}
+
+
+// BRIGHTNESS RANGE
+
+// Variance and deviation 
+            // Calculate the height of each segment
+if (ImPlot::BeginPlot("Data Variance", ImVec2(-1, -1), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
+
+    const char* labels[] = { "Min", "Range", "Max" };
+    static float dataBr[3];
+    dataBr[0] = minBright;
+    dataBr[1] = maxBright - minBright;
+    dataBr[2] = 255 - maxBright;
+    ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels);
+    ImPlot::SetupAxisLimits(ImAxis_X1, 1, 3);
+    ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 300);
+
+    // Brightness variance
+    ImPlot::PushColormap("ranges");
+    ImPlot::PlotBarGroups(labels, dataBr, 3, 1, 1.0f, 2.0f, ImPlotBarGroupsFlags_Stacked);
+    ImPlot::PopColormap();
+    ImPlot::PlotScatter("a", &two, &prog->calibrationRegister[caliParamIndex::brightness].value, 1);              // brightPoint 
+    string currentBrighttxt = std::format("{:.2f}", prog->calibrationRegister[caliParamIndex::brightness].value);
+    string brightVarianceText = (string)"Variance\n = " + std::format("{:2.2f}", prog->calibrationRegister[caliParamIndex::br_variance].value);
+    ImPlot::PlotText("Brightness", two, 290.0f);
+    ImPlot::PlotText(currentBrighttxt.data(), two, std::clamp(prog->calibrationRegister[caliParamIndex::brightness].value, 0.0f, 150.0f) + 5.0f);  // brightText
+    ImPlot::PlotText(brightVarianceText.data(), two, 265.0f, { 0,0 });
+
+    ImPlot::EndPlot();
+}
+
+SHADED HISTOGRAM
+if (calibrationMode) {
+
+    static float y_data[256], x_data[256];
+    for (size_t i = 0; i < 256; i++)
+    {
+        x_data[i] = (float)i;
+        y_data[i] = (i > 15 && i < 50) ? maxPeak : 0;
+    }
+
+    if (maxPeakIndex > 15 && maxPeakIndex < 50) {
+        ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(20, 200, 20, 100));
+        ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.8f);
+    }
+    else {
+        ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 20, 20, 60));
+        ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.3f);
+    }
+    ImPlot::PlotShaded("Highlight", x_data, y_data, 256, 0);
+    ImPlot::PopStyleColor(1);
+    ImPlot::PopStyleVar();
+}
+
+
+
+// OLD FOCUS BAR
+static float maxFocus = 1.0f;
+maxFocus = max(guiImagestats.focus, maxFocus);
+double edge = 1.5f * (double)maxFocus;
+if (!holdValues && EVERY_5_SECONDS) maxFocus = 0;
+
+if (ImPlot::BeginPlot("e", ImVec2(-1, 250), ImPlotFlags_NoTitle)) {
+
+    ImPlot::SetupLegend(ImPlotLocation_North, ImPlotLegendFlags_Outside | ImPlotLegendFlags_Horizontal);
+    ImPlot::SetupAxes(nullptr, nullptr, 0 | ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoGridLines);
+    ImPlot::SetupAxisLimits(ImAxis_X1, -1, 1);
+    ImPlot::SetupAxisLimits(ImAxis_Y1, 0, edge, ImPlotCond_Always);
+
+
+    // GOOD FOCUS THING
+    ImPlot::SetNextFillStyle(ImVec4(1, 1, 1, 0.2), 1);
+    ImPlot::SetNextLineStyle(ImVec4(1, 1, 1, 0.5), 1);
+
+    if (localStatCopy.focus > 4.8f) {
+        ImPlot::SetNextFillStyle(ImVec4(0.80, 1, 1, 0.7), 1);
+        ImPlot::SetNextLineStyle(ImVec4(0.40, 0.4, 1, 0.8), 4);
+    }
+
+    ImPlot::PlotBars("Focus Quality", &zero, &localStatCopy.focus, 1, 1);
+    string focusTxt = std::format("{:.2f}", localStatCopy.focus);
+    ImPlot::PlotText(focusTxt.data(), zero, localStatCopy.focus + 0.5f);
+
+    // target focus
+    ImPlot::SetNextLineStyle(ImVec4(0.40, 1, 0.4, 1), 2);
+    ImPlot::PlotInfLines("Target", &targetFocus, 1, ImPlotInfLinesFlags_Horizontal);
+
+
+    //  ImPlot::PlotInfLines("Max focus", &maxFocus, 1, ImPlotInfLinesFlags_Horizontal);
+    ImPlot::EndPlot();
+
+
+
+
+}
+
+
+// HISTOGRAM COPY
+
+// Histogram copy
+if (ImPlot::BeginPlot("Histogramme", ImVec2(-1, -1), ImPlotFlags_NoTitle)) {
+
+    float maxPeak = 0;
+    float maxPeakIndex = 0;
+
+    for (size_t i = 0; i < 256; i++)
+    {
+        histogramContent[i] = (float)guiBuffer.histogram[i];
+
+        if (maxPeak < histogramContent[i]) {
+            maxPeak = histogramContent[i];
+            maxPeakIndex = i;
+        }
+    }
+
+
+    ImPlot::SetupAxes(nullptr, nullptr, 0, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoTickLabels);
+    ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+    ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
+    ImPlot::PlotBars("Pixel Histogram", histogramContent.data(), 255);
+    ImPlot::PlotInfLines("Effective Threshold", &tre, 1);
+    //ImPlot::PlotInfLines("Average brightness", &guiImagestats.pixelAverage, 1);
+
+    ImPlot::EndPlot();
+}
+
+tRight;
+
+
+
+// SPECTROGRAM
+
+// Histogram History
+if (ImPlot::BeginPlot("Histogram history", ImVec2(-1, 275), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+
+    static HistBuffer histMap;
+    histMap.addHist(histogramContent);
+    ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels);
+    ImPlot::SetupAxisLimits(ImAxis_Y1, 0, HIST_DEPTH, ImGuiCond_Always);
+    ImPlot::SetupAxisLimits(ImAxis_X1, 0, HIST_WIDTH, ImGuiCond_Always);
+
+    // ( Jet, Plasma, Viridis)
+    ImPlot::PushColormap(ImPlotColormap_Plasma);
+
+    ImPlot::PlotHeatmap(
+        "Histogram-gram",
+        histMap.flatData.data(),       // Pointer to the flattened data
+        HIST_DEPTH,                    // Number of rows (time slices currently in buffer)
+        HIST_WIDTH,                    // Number of columns (256 bins per slice)
+        0, 5.5f,                       // color range
+        nullptr,                       // Value format string (e.g., "%.2f")
+        ImPlotPoint(0, 0),         // Bottom-left corner of the heatmap
+        ImPlotPoint(HIST_WIDTH - 1, HIST_DEPTH) // Top-right corner of the heatmap
+    );
+
+    ImPlot::PopColormap(); // Pop the colormap after plotting
+    ImPlot::EndPlot();
+}
+#endif
+
 
 #endif

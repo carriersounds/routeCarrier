@@ -5,7 +5,7 @@ FileIO::FileIO(Program* input) {
     currentImage = 0;
     imgCount = 0;
     prog = input;
-    lastSavedImage = "";
+    lastSavedFile = "";
 
     EXEpath = getEXEDir();
     saveDir = getEXEDir() / "assets\\Recordings\\";
@@ -32,16 +32,14 @@ void FileIO::manualSaveFile(bool as) {
         return;
     }
 
-
-
     // default
     if (!as) {
         //------------- SET FILENAME + PATH ---------------//
         std::string FilePath = saveDir.string();
 
-
         time_t t = time(0);   // get time now
-        tm* now = localtime(&t);
+        tm* now = nullptr;
+        localtime_s(now,&t);
         char timestamp[80];
         strftime(timestamp, 80, "%Y-%m-%d %H.%M.%S - ", now);
 
@@ -60,7 +58,7 @@ void FileIO::manualSaveFile(bool as) {
 
     }
 
-    Logger::log("Image saved at " + lastSavedImage, level_INFO, source_FILES);
+    Logger::log("Image saved at " + lastSavedFile, level_INFO, source_FILES);
 }
 
 void FileIO::saveTextFile(string path) {
@@ -68,7 +66,6 @@ void FileIO::saveTextFile(string path) {
     //------------- SET UNIQUE FILENAME + PATH ---------------//
 
     char addchar[9];
-    sprintf(addchar, "%08x", 1337);
 
     std::string FilePath;
     std::string FullDirectory;

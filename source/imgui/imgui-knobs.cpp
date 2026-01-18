@@ -180,13 +180,17 @@ namespace ImGuiKnobs {
 
             // Draw title
             if (!(flags & ImGuiKnobFlags_NoTitle)) {
-                auto title_size = ImGui::CalcTextSize(label, NULL, false, width);
+
+                // Check ##xx and remove identifier
+                const char* text_display_end;
+                text_display_end = ImGui::FindRenderedTextEnd(label, NULL);
+                auto title_size = ImGui::CalcTextSize(label, text_display_end, false, width);
 
                 // Center title
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
                                      (width - title_size[0]) * 0.5f);
 
-                ImGui::Text("%s", label);
+                ImGui::TextUnformatted(label, text_display_end);
             }
 
             // Draw knob

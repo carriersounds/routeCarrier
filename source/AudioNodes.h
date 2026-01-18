@@ -57,7 +57,6 @@ protected:
 
 	std::mutex guiMtx;
 	juce::AudioBuffer<float> GUIbuffer;		// for displaying output level. 
-	bool ImGui_InvertedFloatSlider(const char* name, float& param, float min, float max, const char* format = "%.2f", ImGuiSliderFlags flags = 0);
 };
 
 

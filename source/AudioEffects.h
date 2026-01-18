@@ -12,6 +12,7 @@ enum class FilterType {
     highShelf,
     notch,
     peak,
+    allpass
 };
 enum class DistortionType {
     softclip,
@@ -26,37 +27,155 @@ using JuceFilter = juce::dsp::ProcessorDuplicator<Filt, Coeffs>;
 using JuceGain = juce::dsp::Gain<float>;
 using JuceShaper = juce::dsp::WaveShaper<float>;
 
-// Add graphs / output meters for better 
-
-
 class Equalizer final : public DSPNode
 {
 public:
-    Equalizer(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID) {
+    Equalizer(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID)
+       {
 
-        X_frequencies.resize(500);
-        Y_responseDB.resize(500);   // EQ graph
+        drywet.setWetLatency(0.0f);
+        drywet.setMixingRule(juce::dsp::DryWetMixingRule::sin3dB);
+        drywet.setWetMixProportion(1.0f);
+        dryWetMix = 1.0f;
 
-        *(EQ4.get<0>().state) = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, 100);
-        *(EQ4.get<1>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 500, 0.7, -4);
-        *(EQ4.get<2>().state) = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(48000.0, 3000,0.7,4);        // = EQ Node
-        *(EQ4.get<3>().state) = *juce::dsp::IIR::Coefficients<float>::makeHighPass(48000.0, 10000);
+        bandSettings.resize(4);
+        bandInterface.resize(4);
+
+        chainVec.resize(4);
+
+        X_frequencies.resize(256);
+        Y_responseDB.resize(256);   // EQ graph
+
+        bandInterface[0] = EQbandSetting<double>(100, 0.0f, 0.7f, FilterType::lowShelf);
+        bandInterface[1] = EQbandSetting<double>(500, 0.0f, 0.7f);
+        bandInterface[2] = EQbandSetting<double>(2000, 0.0f, 0.7f);
+        bandInterface[3] = EQbandSetting<double>(9000, 0.0f, 0.7f, FilterType::highShelf);
+        
+        for (size_t i = 0; i < bandInterface.size(); i++) {
+            bandSettings[i] = bandInterface[i].toFloats();
+        }
+
+        for (int i = 0; i < chainVec.size(); i++) {
+
+            FilterType type = bandSettings[i].typeToCtrl;
+            switch (type)
+            {
+            case FilterType::lowPass:*chainVec[i].state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, bandSettings[i].freq, bandSettings[i].Q);
+                break;
+            case FilterType::highPass:*chainVec[i].state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, bandSettings[i].freq, bandSettings[i].Q);
+                break;
+            case FilterType::bandPass:*chainVec[i].state = *juce::dsp::IIR::Coefficients<float>::makeBandPass(sampleRate, bandSettings[i].freq, bandSettings[i].Q);
+                break;
+            case FilterType::lowShelf:*chainVec[i].state = *juce::dsp::IIR::Coefficients<float>::makeLowShelf(sampleRate, bandSettings[i].freq, bandSettings[i].Q, juce::Decibels::decibelsToGain(bandSettings[i].gainDB));
+                break;
+            case FilterType::highShelf:*chainVec[i].state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(sampleRate, bandSettings[i].freq, bandSettings[i].Q, juce::Decibels::decibelsToGain(bandSettings[i].gainDB));
+                break;
+            case FilterType::notch:*chainVec[i].state = *juce::dsp::IIR::Coefficients<float>::makeNotch(sampleRate, bandSettings[i].freq, bandSettings[i].Q);
+                break;
+            case FilterType::peak:*chainVec[i].state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, bandSettings[i].freq, bandSettings[i].Q, juce::Decibels::decibelsToGain(bandSettings[i].gainDB));
+                break;
+            case FilterType::allpass:*chainVec[i].state = *juce::dsp::IIR::Coefficients<float>::makeAllPass(sampleRate, bandSettings[i].freq, bandSettings[i].Q);
+                break;
+            default:
+                break;
+            }
+        }
+
     }
 
-    void getMagnetudeCurve();
     std::vector<float> X_frequencies;
     std::vector<float> Y_responseDB;
 
 
 protected:
     EffectType getType() { return EffectType::EQ; }
-    void prepareDSP(const juce::dsp::ProcessSpec& spec) override { EQ4.reset(); EQ4.prepare(spec); }
+    void prepareDSP(const juce::dsp::ProcessSpec& spec) override { 
+        drywet.reset(), drywet.prepare(spec);
+        for (auto& f : chainVec) { f.reset(); f.prepare(spec); }
+    }
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
     void renderInterface(float nodeW) override;
+    void addBand() {
 
+
+
+    }
 private:
+    template<typename T>
+    struct EQbandSetting {
+        EQbandSetting(T freq = 100.0f, T gainDB = 0.0f, T Q = 0.7f, FilterType type = FilterType::peak, bool enabled = true) :
+            typeToCtrl(type),freq(freq),gainDB(gainDB),Q(Q),enabled(enabled){
+            if (freq < 1) freq = 100.0f;
+        }
 
-    juce::dsp::ProcessorChain<JuceFilter, JuceFilter, JuceFilter, JuceFilter> EQ4;
+        T freq;
+        T gainDB;
+        T Q;
+        bool enabled;
+        FilterType typeToCtrl;
+
+        EQbandSetting<float> toFloats() {
+            return EQbandSetting<float>((float)freq, (float)gainDB, (float)Q, typeToCtrl, enabled);
+        }
+    };
+
+    string FilterTypeString[8] = {
+        "LowPass",
+        "HighPass",
+        "BandPass",
+        "Low Shelf",
+        "High Shelf",
+        "Notch",
+        "Peak",
+        "Allpass"};
+
+    juce::dsp::DryWetMixer<float> drywet;
+    int bandCount = 4;
+    float dryWetMix;
+
+    vector<JuceFilter> chainVec;
+    vector<EQbandSetting<float>> bandSettings;
+    vector<EQbandSetting<double>> bandInterface;
+
+    float getChainMagnitude(const vector<JuceFilter>& chain, float freq, float sampleRate)
+    {
+        float mag = 1.0f;
+
+
+        for (int i = 0; i < chainVec.size(); i++) {
+            auto& filter = chainVec[i];
+
+            if (bandSettings[i].enabled)
+            mag *= filter.state->getMagnitudeForFrequency(freq, sampleRate);
+        }
+   
+        return mag;
+    }
+    void generateFrequencyResponse(const vector<JuceFilter>& chain, float sampleRate,vector<float>& freqs,vector<float>& magsDb)
+    {
+        constexpr int numPoints = 256;
+        constexpr float minFreq = 20.0f;
+        constexpr float maxFreq = 20000.0f;
+
+        freqs.resize(numPoints);
+        magsDb.resize(numPoints);
+
+        for (int i = 0; i < numPoints; ++i)
+        {
+            float norm = (float)i / (numPoints - 1);
+            float freq = minFreq * std::pow(maxFreq / minFreq, norm);
+
+            float mag = getChainMagnitude(chain, freq, sampleRate);
+            mag = (mag * dryWetMix + (1.0f-dryWetMix));
+            float magDb = juce::Decibels::gainToDecibels(mag);
+
+            freqs[i] = freq;
+            magsDb[i] = magDb;
+        }
+
+    }
+    //void addBand();
+
 };
 
 class Filter final : public DSPNode

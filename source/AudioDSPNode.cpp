@@ -63,7 +63,7 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
     node::EndNode();
 }
 
-void DSPNode::process() {
+void DSPNode::prepareOutput() {
     outputBuffer.clear();
     outputBuffer.makeCopyOf(inputBuffer, false);    // output buf is the process context
     juce::MidiBuffer empt;                          // function needs it RIP

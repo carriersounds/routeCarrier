@@ -26,6 +26,7 @@ public:
     juce::AudioDeviceManager deviceManager;                                              
     juce::WaitableEvent* trigger;
     juce::WaitableEvent* trigAddress;
+    float deviceGain_dB = 0.0f; //dB
 
     // Custom Control
     void renderAsNode(float pinSize, float spacing) override;

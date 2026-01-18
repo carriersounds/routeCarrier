@@ -20,11 +20,10 @@ public:
 
     void selectFile(bool openNewDialog, bool folder = 0, int action = 0, int recursive = 0, string extFileLoad = "");
    
-
-    GUI gui;
-    AppLog appLog;	
-    FileIO fileIO;
-    AudioEngine audio;
+    GUI gui;            // Main GUI functions. Node GUIs are implemented per-element
+    AppLog appLog;	    // internal log, can be accessed with Alt+L
+    FileIO fileIO;      // presets & audio files
+    AudioEngine audio;  // audio routing 
 
 };
 

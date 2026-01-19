@@ -4,6 +4,7 @@
 
 AudioEngine::AudioEngine(Program* prog) : 
     prog(prog), nullDevice(BlockType::NullDevice,"",1000){
+    enableRouting = true;
     mainOutputReady = false;
     uniqueID = 1000;    // null device starts at ID = 1000
     audio_engine_on = true;
@@ -29,23 +30,36 @@ void AudioEngine::run() {
 
         nodeLock.lock();
 
-        for (auto& node : sortedNodes) {
-            nodes.at(node)->inputBuffer.clear();    // so they can be filled safely
+        if (enableRouting) {
+
+            for (auto& node : sortedNodes) {
+                nodes.at(node)->inputBuffer.clear();    // so they can be filled safely
+            }
+
+            for (auto& node : sortedNodes) {
+                nodes.at(node)->prepareOutput();        // run processing or fifo read/write
+                nodes.at(node)->sendAudioToNextNodes(); // mix audio into nodes linked to this->output
+            }
+        }
+        else {
+
         }
 
-        for (auto& node : sortedNodes) {
-            nodes.at(node)->prepareOutput();        // run processing or fifo read/write
-            nodes.at(node)->sendAudioToNextNodes(); // mix audio into nodes linked to this->output
-        }
         nodeLock.unlock();
     }
 }
 
-BaseID AudioEngine::getNewID(Identifier type) {
+BaseID AudioEngine::getNewID(Identifier type, BaseID PresetNodeID) {
 
-    uniqueID++;
-    
     string idtype;
+
+    if (PresetNodeID) {
+        uniqueID = PresetNodeID;
+    }
+    else {
+        uniqueID++;
+    }
+  
 
     if (type == Identifier::link) idtype = "link";
     if (type == Identifier::node) idtype = "node";
@@ -53,12 +67,14 @@ BaseID AudioEngine::getNewID(Identifier type) {
 
     Logger::log("new " + idtype +", ID: " + to_string(uniqueID), level_DEBUG);
 
+
+
     return uniqueID;
 }
 
-void AudioEngine::createLink(node::PinId leftPin, node::PinId rightPin) {
+void AudioEngine::createLink(node::PinId leftPin, node::PinId rightPin, LinkID presetLinkID) {
 
-    LinkID nextID = getNewID(Identifier::link);
+    LinkID nextID = getNewID(Identifier::link, presetLinkID);
     links.emplace(nextID, BlockLink(nextID, leftPin, rightPin));
 
     calculateSends(nextID);
@@ -165,11 +181,13 @@ void AudioEngine::breakAllLinks(NodeID node){
     }
 }
 
-NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDeviceName) {
+NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDeviceName, NodeID presetNodeID) {
 
     // create 2 new IDs. 1 for device, 1 for pin
-    NodeID blockID = getNewID(Identifier::node);
+    NodeID blockID = getNewID(Identifier::node, presetNodeID);
     PinID pinID = getNewID(Identifier::pin);
+
+
     nodes[blockID] = make_unique<DeviceNode>(blockType, initDeviceName, blockID);        // add new block
 
     std::unique_lock<std::mutex> lock(nodeLock);
@@ -199,9 +217,9 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     return blockID;
 }
 
-NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect) {
+NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect, NodeID presetNodeID) {
 
-    NodeID blockID = getNewID(Identifier::node);                    // get new IDs for node and pins
+    NodeID blockID = getNewID(Identifier::node, presetNodeID);                // get new IDs for node and pins
     PinID inputPinID = getNewID(Identifier::pin);
     PinID outputPinID = getNewID(Identifier::pin);
 
@@ -318,5 +336,23 @@ void AudioEngine::selectMainOutput(NodeID nodeID) {
 
     devptr = dynamic_cast<DeviceNode*>(nodes.at(nodeID).get());
     devptr->setAsMainOutput(true);
+
+}
+
+void AudioEngine::clearAll() {
+
+    vector<NodeID> IDsToDelete;
+
+    for (auto& [id, node] : nodes) {
+        IDsToDelete.push_back(id);
+    }
+ 
+    for (auto& id : IDsToDelete) {
+        deleteNode(id);             // also removes links, pins, sends, pairs etc...
+    }
+
+    Logger::log("Cleared all nodes", level_INFO);
+        
+    uniqueID = 1000;
 
 }

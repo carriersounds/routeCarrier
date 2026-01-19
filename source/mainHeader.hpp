@@ -467,8 +467,8 @@ enum FileIOFlags {
     f_previous = 1,
     f_next = 2,
 
-    f_image = 7,
-    f_settings = 8
+    f_audio = 7,
+    f_preset = 8
 };
 
 struct iconData {

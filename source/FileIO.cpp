@@ -2,10 +2,10 @@
 #include "Program.h"
 
 FileIO::FileIO(Program* input) {
-    currentImage = 0;
-    imgCount = 0;
+    currentAudioFile = 0;
+    amtAudioFilesLoaded = 0;
     prog = input;
-    lastSavedFile = "";
+    lastSavedAudioFile = "";
 
     EXEpath = getEXEDir();
     saveDir = getEXEDir() / "assets\\Recordings\\";
@@ -58,17 +58,17 @@ void FileIO::manualSaveFile(bool as) {
 
     }
 
-    Logger::log("Image saved at " + lastSavedFile, level_INFO, source_FILES);
+    Logger::log("Image saved at " + lastSavedAudioFile, level_INFO, source_FILES);
 }
 
-void FileIO::saveTextFile(string path) {
+void FileIO::savePreset(string path) {
 
     //------------- SET UNIQUE FILENAME + PATH ---------------//
 
     char addchar[9];
 
     std::string FilePath;
-    std::string FullDirectory;
+    std::string FullDirectory = saveFileDialog(f_preset);
     std::string TextFileName;
 
     TextFileName = FullDirectory + ".vvr";
@@ -81,8 +81,6 @@ void FileIO::saveTextFile(string path) {
     string FOOT = "</MARKERS>";
 
     string TextContent = HEAD;
-
-    string blobData;
 
 
     TextContent.append(FOOT);
@@ -103,12 +101,12 @@ string FileIO::saveFileDialog(int filetype) {
     ofn.hwndOwner = NULL;
 
 
-    if (filetype == f_image) {
-        ofn.lpstrFilter = "PNG (*.png)\0*.png\0" "JPEG (*.jpg)\0*.jpg\0" // Filter for text files
-            "BMP (*.bmp)\0*.bmp\0";
+    if (filetype == f_audio) {
+        ofn.lpstrFilter = "WAV (*.wav)\0*.wav\0" "MP3 (*.mp3)\0*.mp3\0" // Filter for text files
+            "AIF (*.aif)\0*.aif\0";
     }
-    else if (filetype == f_settings) {
-        ofn.lpstrFilter = "Config file (*.txt)\0*.txt\0";
+    else if (filetype == f_preset) {
+        ofn.lpstrFilter = "Preset file (*.rpr)\0*.rpr\0";
     }
     ofn.nFilterIndex = 1;       // default start
     ofn.lpstrFile = szFileName;
@@ -121,7 +119,7 @@ string FileIO::saveFileDialog(int filetype) {
     ofn.lpstrTitle = "Save File As";
 
     // Set the default file extension if the user doesn't provide one.
-    if (filetype == f_image) ofn.lpstrDefExt = "bmp"; else ofn.lpstrDefExt = "txt";
+    if (filetype == f_audio) ofn.lpstrDefExt = "wav"; else ofn.lpstrDefExt = "rpr";
 
     ofn.Flags = OFN_OVERWRITEPROMPT | // Prompt the user if the selected file already exists.
         OFN_NOCHANGEDIR;      // Restores the current directory to its original value if it was changed by the user.
@@ -140,7 +138,7 @@ string FileIO::saveFileDialog(int filetype) {
 
 }
 
-void FileIO::loadTextFile(string imagepath) {
+void FileIO::loadPreset(string imagepath) {
 
     std::filesystem::path filepath(imagepath);
     string base_filename = filepath.stem().string();
@@ -206,14 +204,14 @@ vector<string> FileIO::openAndLoadFiles(bool recursive, bool folder, bool openDi
 
     auto allFilesInScope = glob(folderPath, recursive);
 
-    imgCount = (int)allFilesInScope.size();
+    amtAudioFilesLoaded = (int)allFilesInScope.size();
 
-    currentImage = 0;   // folder selection starts at 0
+    currentAudioFile = 0;   // folder selection starts at 0
 
-    for (int i = 0; i < imgCount; i++)                // get current index for image
-        if(filePath == allFilesInScope[i]) currentImage = i;   // short circuit evaluation (assign if they're equal)
+    for (int i = 0; i < amtAudioFilesLoaded; i++)                // get current index for image
+        if(filePath == allFilesInScope[i]) currentAudioFile = i;   // short circuit evaluation (assign if they're equal)
 
-    Logger::log(to_string(imgCount) + " images loaded from folder: " + folderPath, level_INFO, source_FILES);
+    Logger::log(to_string(amtAudioFilesLoaded) + " images loaded from folder: " + folderPath, level_INFO, source_FILES);
 
     return allFilesInScope;
 }
@@ -313,11 +311,11 @@ string FileIO::OpenFileDialog(int filetype) {
     ofn.lpstrFile = szFile;
     ofn.nMaxFile = sizeof(szFile);
 
-    if (filetype == f_image) {
-        ofn.lpstrFilter = ("Image files\0*.png;*.bmp;*.tif;*.jpg;*.jpeg;*.tiff\0");
+    if (filetype == f_audio) {
+        ofn.lpstrFilter = ("Audio files(.wav .mp3 .aif .flac .m4a),\0*.wav;*.mp3;*.aif;*.aiff;*.flac;*.m4a\0");
     }
-    else if(filetype == f_settings){
-        ofn.lpstrFilter = "Config files\0*.txt\0";
+    else if(filetype == f_preset){
+        ofn.lpstrFilter = "RouteCarrier Presets \0*.rpr\0";
     }
 
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;

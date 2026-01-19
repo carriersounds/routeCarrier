@@ -737,6 +737,7 @@ void GUI::renderMixPanel() {
     static bool menuOpen = false;
     static NodeID nodeHovered = 0;
     static NodeID nodeRightClicked = 0;
+    static bool ClearScreen = false;
     auto& io = ImGui::GetIO();
 
 
@@ -750,7 +751,18 @@ void GUI::renderMixPanel() {
 
     ImGui::SameLine();
 
-    if (ImGui::Button("TOGGLE AUDIO")) prog->audio.enableRouting = !prog->audio.enableRouting;
+
+    if (prog->audio.enableRouting) {
+        if (ImGui::Button("Pause system")) prog->audio.enableRouting = false;
+    }
+    else {
+        if (ImGui::Button("Resume system")) prog->audio.enableRouting = true;
+    }
+    ImGui::SameLine();
+
+
+    if (ImGui::Button("Clear Screen")) ClearScreen = true;
+
 
     node::SetCurrentEditor(node_Context);
     node::Begin("editore", ImVec2(0.0, 0.0f));
@@ -839,7 +851,7 @@ void GUI::renderMixPanel() {
                     if (startPinId != endPinId && nodeValid){
                         if (node::AcceptNewItem())                          // RELEASED 
                         {
-                            prog->audio.createLink(startPinId, endPinId);   // Creates new link
+                            prog->audio.createLink(startPinId, endPinId);   // Creates new link, toposort prevents feedback 3+
                         }
                     }
                     else
@@ -864,7 +876,12 @@ void GUI::renderMixPanel() {
                 prog->audio.deleteNode(nodeID.Get());
                 node::AcceptDeletedItem();
             }
-        }
+    }
+
+    if (ClearScreen) {
+        prog->audio.clearAll();     // "hasanylinks" can only be called inside a node::begin/end context
+        ClearScreen = false;
+    }
 
     node::EndDelete();
     node::EndCreate();
@@ -927,9 +944,6 @@ void GUI::renderDeviceList() {
         }
 
     }
-
-    if (ImGui::Button("TOGGLE AUDIO")) prog->audio.enableRouting = !prog->audio.enableRouting;
-
 
     ImGui::End();
 }

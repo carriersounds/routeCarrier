@@ -17,15 +17,10 @@ TODO:
 - Actual sample rate conversion
 - proper fifo management
 - Create full channel strip, modular effects, working effects, processdoubler?
-    + filters (low / band / hi)
-    + gain
-    + EQ
     - compressor
-    + reverb
-    - saturation tanh() / digClip / sinefold
     - simple channel strip
     - waveform visualizer per link
-- drag link up/down to set gain for that copy stage, buffer write operations = gain included always
+   ? - drag link up/down to set gain for that copy stage, buffer write operations = gain included always
 
 later: 
 - save preset
@@ -33,15 +28,6 @@ later:
 - ability to choose ASIO (like pioneer ddj for routing)
 - improve graphin GUI lmao
 
-Node Features:
-
-- right click node: options
-- right-click pin: options?
-- right-click links: options?
- 
-- monitor input or output (show waveform on graph)
-- delete / disconnect
-- set as main output
 
 */
 
@@ -53,9 +39,9 @@ public:
     void run();
  
     juce::WaitableEvent requestNewAudioBlock;       // from main output
-    bool enableRouting = true;
-   
     
+    atomic<bool> enableRouting;
+     
     // Identifiers
     DeviceNode nullDevice;                                      // no input, no output, just for namecheck 
     std::map<NodeID, unique_ptr<AudioNode>> nodes;              // Both DSP and device nodes
@@ -65,29 +51,31 @@ public:
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
     std::map<NodeID,float> fifoLevels;                          // for metering buffers
 
-    // Node management
-    NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName);          // choose input or output, returns next ID
-    NodeID addNewDSPNode(EffectType typeOfEffect);                                      // effects = enum in function input, return is for GUI i think?   
-    void deleteNode(NodeID deviceID);   
-    void createLink(node::PinId leftPin, node::PinId rightPin);
-    void deleteLink(LinkID linkID);
-    void calculateSends(LinkID newlink);
-    void topologicalSortNodes();
-    BaseID getNewID(Identifier type);                                                   // uniqueID++
-    void breakAllLinks(NodeID node);
-    // InsertBetweenLink()
-
-    void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput);
+    // Node Interface
+    NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName, NodeID PresetNodeID = 0);   // preset       // choose input or output, returns next ID
+    NodeID addNewDSPNode(EffectType typeOfEffect, NodeID PresetNodeID = 0);                               // preset       // effects = enum in function input, return is for GUI i think?   
+    void createLink(node::PinId leftPin, node::PinId rightPin, LinkID presetID = 0);                      // preset  
+    void deleteNode(NodeID deviceID);                                             
+    void deleteLink(LinkID linkID);                                                                                           
+    void breakAllLinks(NodeID node);                                            
+    void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput); 
     void selectMainOutput(NodeID id);
-    bool audio_engine_on;
+    void clearAll();
+
+    // InsertBetweenLink()//gui
+
 
 private:
+    BaseID uniqueID;
+    BaseID getNewID(Identifier type, BaseID presetComponentID = 0);
+    void calculateSends(LinkID newlink);
+    void topologicalSortNodes();
     bool mainOutputReady;
     int numDevices = 0;
     std::thread audiothread;
     std::mutex nodeLock;
     Program* prog;
-    BaseID uniqueID;
+    bool audio_engine_on;
 };
 
 

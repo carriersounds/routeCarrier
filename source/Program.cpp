@@ -24,11 +24,11 @@ void Program::selectFile(bool openNewDialog, bool folder, int action, int recurs
     if (extFileLoad != "")  fileIO.selectFile(f_openFile, 0, false, extFileLoad);
 
     if (action != f_current) {
-        if (action == f_next) fileIO.currentImage--;
-        if (action == f_previous) fileIO.currentImage++;
+        if (action == f_next) fileIO.currentAudioFile--;
+        if (action == f_previous) fileIO.currentAudioFile++;
     }
 
-    if (!fileIO.imgCount || !fileIO.allFilesInScope.size()) return;  // don't merge if there's no images loaded
+    if (!fileIO.amtAudioFilesLoaded || !fileIO.allFilesInScope.size()) return;  // don't merge if there's no images loaded
 
     //fileIO.mergeImageAndDefects();              // actual pixel loading happens here, merge with .vvr (blob) data  
    // fileIO.sendToProgram(reProcessLoadedImage); // 1 = send to procThread, 0 = send to GUI only

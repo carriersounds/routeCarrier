@@ -347,7 +347,7 @@ void GUI::renderAllModules() {
     renderMenuBar();
 
  
-    renderFIFOState();
+    renderMeters();
   //  renderPreview();                    // LOCKED/ NO MOVE
     renderLog();
 
@@ -948,15 +948,33 @@ void GUI::renderDeviceList() {
     ImGui::End();
 }
 
-void GUI::renderFIFOState() {
+void GUI::renderMeters() {
 
-  //  return;
-   
+
     if (!showTimings) return;
 
-    ImGui::Begin("FIFO Fill levels", &showTimings, ImGuiWindowFlags_NoFocusOnAppearing);
+    ImGui::Begin("Metering", &showTimings, ImGuiWindowFlags_NoFocusOnAppearing);
 
-    ImGui::Text("Input = before read, output = after write");
+    ImGui::NewLine();
+
+    ImGui::SeparatorText("Engine Stats");
+
+    INDENT_NEXT
+
+    ImGui::Text("Engine Clock Period: %05.2f ms", prog->audio.engineClockTimeMs);
+
+    INDENT_NEXT
+    ImGui::Text("Engine Process time: %05.2f ms", prog->audio.engineProcessTimeMs);
+    
+    ImGui::NewLine();
+
+    ImGui::SeparatorText("FIFO Metering");
+    // ENGINE FPS
+
+    // PROCESS TIME
+
+
+
 
     float fr = ImGui::GetIO().Framerate;
     static ScrollingBuffer guiData;
@@ -987,7 +1005,7 @@ void GUI::renderFIFOState() {
 
    // guiData.AddPoint(t, 1000.0 / fr);           // TODO: make option to pause graphing (halt)
 
-    static float history = 2.0f;
+    static float history = 20.0f;
     static float sleeperMicroseconds = 500;
 
     ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");

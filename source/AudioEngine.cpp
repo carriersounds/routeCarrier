@@ -21,14 +21,23 @@ AudioEngine::~AudioEngine() {
 
 void AudioEngine::run() {
 
+
+    Counter engineClock;
+    Counter processClock;
+
     while (audio_engine_on) {
            
+        engineClockTimeMs = engineClock.getDurationLoop() / 1000.0f;
+        
+
         if (mainOutputReady)
             requestNewAudioBlock.wait();                // wait for main output fifo to empty below BLOCKSIZE
         else
             std::this_thread::sleep_for(10.60ms);       // simulate tickrate for routing previews. 48khz at 512 samples = 10.66ms (assuming 60us processing)
 
         nodeLock.lock();
+
+        processClock.startTimer();
 
         if (enableRouting) {
 
@@ -58,6 +67,7 @@ void AudioEngine::run() {
 
         }
 
+        engineProcessTimeMs = processClock.getDuration() / 1000.0f;
 
 
         nodeLock.unlock();

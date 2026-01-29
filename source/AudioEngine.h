@@ -31,12 +31,7 @@ later:
 
 */
 
-struct FifoData {
-    FifoData() { avgFill = 0; totFill = 0; ratio = 1; }
-    float avgFill;
-    float totFill;
-    float ratio;
-};
+
 
 class AudioEngine {
 public:
@@ -49,6 +44,8 @@ public:
     
     atomic<bool> enableRouting;
      
+
+
     // Identifiers
     DeviceNode nullDevice;                                      // no input, no output, just for namecheck 
     std::map<NodeID, unique_ptr<AudioNode>> nodes;              // Both DSP and device nodes
@@ -57,6 +54,13 @@ public:
     std::map<LinkID, BlockLink> links;                          // main interface for generating and deleting links
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
     
+
+    struct FifoData {
+        FifoData() { avgFill = 0; totFill = 0; ratio = 1; }
+        float avgFill;
+        float totFill;
+        float ratio;
+    };
     std::map<NodeID, FifoData> fifoLevels;                          // for metering buffers
 
     // Node Interface
@@ -69,8 +73,11 @@ public:
     void changeAudioDevice(NodeID deviceID, const juce::String& nameToFind, bool isOutput); 
     void selectMainOutput(NodeID id);
     void clearAll();
+    float engineClockTimeMs = 0;
+    float engineProcessTimeMs = 0;
 
-    // InsertBetweenLink()//gui
+
+
 
 private:
     BaseID uniqueID;

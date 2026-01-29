@@ -12,6 +12,7 @@ public:
     ~DeviceNode() override {
         deviceManager.removeAudioCallback(this);
         deviceManager.closeAudioDevice();
+        src_delete(sampleRateConverter);
     }
 
     // JUCE Inherited
@@ -36,7 +37,9 @@ public:
     double SRC_base;
     int err4src;
 
-#define ERRFILT 43
+    float recoverStrength = 0.0001;
+
+#define ERRFILT 30
     float avgErr = 0;
     float fillCountBuf[ERRFILT] = { 1024 };
     int errIdx = 0;

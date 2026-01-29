@@ -79,7 +79,7 @@ private:
     void renderLocalNodeContextMenu(NodeID ID);
 
     void renderLog();
-    void renderFIFOState();
+    void renderMeters();
 
     void setCustomStyle();
 

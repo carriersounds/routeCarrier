@@ -19,12 +19,6 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
         Name
     );
 
-
-    for (size_t i = 0; i < ERRFILT; i++)
-    {
-        fillCountBuf[i] = 1024;
-    }
-
     sampleRateConverter = src_new(SRC_LINEAR, 2, &err4src);
 
     juce::AudioDeviceManager::AudioDeviceSetup setup;
@@ -66,6 +60,7 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
 
     ImGui::Dummy(ImVec2(0, 6));
+    //ImGuiKnobs::Knob(("strength\n" + getBlockName()).c_str(), &recoverStrength, 0.0000000001, 1, 0, "%.8f", 1, 0, ImGuiKnobFlags_Logarithmic);
 
     if (isInput()){
 
@@ -135,9 +130,6 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     }     
       
     node::EndNode();
-
-
-
 }
 
 void DeviceNode::selectDevice(const juce::String& nameToFind, bool isOutput)
@@ -223,8 +215,7 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples, bool perfor
 
     fillCountBuf[next_fillCountIndex()] = hardwareFIFO.getNumReady();
 
-
-    // 1. Handle non-SRC path as you already do...
+    // Handle non-SRC variant
     if (!performSRC || isMainOutput()) {
        
         hardwareFIFO.prepareToRead(numSamples, start1, size1, start2, size2);
@@ -245,23 +236,19 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples, bool perfor
         return size1 + size2;
     }
 
-
-
-    // 2. Update PID / Ratio
+    
+    // Update PID / Ratio
     double diff = getAvgFill() - 1024.0;
-    SRC_ratio = SRC_base - (0.000005 * diff); 
-    SRC_ratio = juce::jlimit(0.1, 10.0, SRC_ratio);
 
-    // 3. Calculate how many input samples we need to guarantee 'numSamples' out
-    // We add a small safety margin so the resampler doesn't run dry.
+    diff *= abs(tanh(0.01 * diff));
+    SRC_ratio = SRC_base - (recoverStrength * diff);
+    SRC_ratio = juce::jlimit(SRC_base*0.95, SRC_base*1.05, SRC_ratio);      // should not hit, more for safety
+    
+
+    // Calculate how many input samples we need to guarantee 'numSamples' out
+    // add a small safety margin so the resampler doesn't run dry.
     int inputNeeded = (int)std::ceil(numSamples / SRC_ratio) + 10;
-
-    // 4. Pull from FIFO into a contiguous JUCE buffer (for interleaving)
-
     hardwareFIFO.prepareToRead(inputNeeded, start1, size1, start2, size2);
-
-    // Ensure our internal work buffer is large enough for interleaved data
-    srcWorkBuffer.setSize(numChannels, size1 + size2);
 
     // Copy from ring buffer to contiguous planar work buffer
     for (int ch = 0; ch < numChannels; ++ch) {
@@ -269,8 +256,7 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples, bool perfor
         if (size2 > 0) srcWorkBuffer.copyFrom(ch, size1, hardwareBuffer, ch, start2, size2);
     }
 
-    // 5. Prepare SRC_DATA structure
-    // We need a flat float array for interleaved input and output
+    // need a flat float array for interleaved input and output
     std::vector<float> interleavedIn(srcWorkBuffer.getNumSamples() * numChannels);
     std::vector<float> interleavedOut(numSamples * numChannels);
 
@@ -288,22 +274,22 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples, bool perfor
     data.output_frames = numSamples; // We want exactly this many out
     data.src_ratio = SRC_ratio;
     data.end_of_input = 0;
+    
 
-    // 6. Perform SRC
+    // Perform SRC
     int error = src_process(sampleRateConverter, &data);
     if (error) {
         Logger::log("SRC Error: " + string(src_strerror(error)));
         return 0;
     }
 
-    // 7. Interleaved -> Planar (Back to Engine Output)
+    // Interleaved -> Planar (Back to Engine Output)
     for (int s = 0; s < data.output_frames_gen; ++s) {
         for (int ch = 0; ch < numChannels; ++ch) {
             output[ch][s] = interleavedOut[s * numChannels + ch];
         }
     }
 
-    // 8. Commit the amount actually consumed from the FIFO
     hardwareFIFO.finishedRead(data.input_frames_used);
 
     return data.output_frames_gen;
@@ -323,8 +309,6 @@ void DeviceNode::prepareOutput() {
         copyBuffer(&outputBuffer, &inputBuffer);    
         writeToFifoFrom(inputBuffer.getArrayOfReadPointers(), BLOCKSIZE);
     }
-
-    // if output, send to hardware & virtual out (gui), since these will always be last after sorting
 }
 
 void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
@@ -334,6 +318,8 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
 
     SRC_base = 48000.0f / sampleRate;
     SRC_ratio = SRC_base;
+
+    
 
     if(isInput())
         numChannels = device->getActiveInputChannels().countNumberOfSetBits();
@@ -345,7 +331,14 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
         inputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
         outputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
         GUIbuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
-        hardwareBuffer.setSize(numChannels, FIFOSIZE, false, true, true);
+
+        hardwareBuffer.setSize(numChannels, FIFOSIZE, false, true, true);    
+        srcWorkBuffer.setSize(numChannels, FIFOSIZE, false, true, true);
+
+
+        src_reset(sampleRateConverter);
+        sampleRateConverter = src_new(SRC_LINEAR, numChannels, &err4src);
+
     }
 
     devicePointer = device;

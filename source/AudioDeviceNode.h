@@ -28,6 +28,33 @@ public:
     juce::WaitableEvent* trigAddress;
     float deviceGain_dB = 0.0f; //dB
 
+
+    //SRC
+    juce::AudioBuffer<float> srcWorkBuffer;
+    SRC_STATE* sampleRateConverter;
+    double SRC_ratio;
+    double SRC_base;
+    int err4src;
+
+#define ERRFILT 43
+    float avgErr = 0;
+    float fillCountBuf[ERRFILT] = { 1024 };
+    int errIdx = 0;
+    int next_fillCountIndex() {
+        errIdx++;
+        if (errIdx == ERRFILT) errIdx = 0;
+        return errIdx;
+
+    }
+    float getAvgFill() {
+        float err = 0;
+        for (size_t i = 0; i < ERRFILT; i++)
+            err += fillCountBuf[i] / (float)ERRFILT;
+        avgErr = err;
+        return err;
+    }
+
+
     // Custom Control
     void renderAsNode(float pinSize, float spacing) override;
     void selectDevice(const juce::String& nameToFind, bool isOutput);
@@ -36,7 +63,7 @@ public:
     void prepareOutput() override;  
     bool isMainOutput() const { return trigger != nullptr; }
     int writeToFifoFrom(const float* const* input, int numSamples);
-    int readFromFifoTo(float* const* output, int numSamples);
+    int readFromFifoTo(float* const* output, int numSamples, bool performSRC = false);
     const float* getDataPointer() const {
         return hardwareBuffer.getReadPointer(0);
     }

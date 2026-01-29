@@ -32,7 +32,9 @@
 #include "implot\implot_internal.h"
 #include "imgui\node-editor\imgui_node_editor.h"
 #include "imgui-knobs.h"
+#include "external\libsamplerate-0.2.2-win64\include\samplerate.h"
 #include <JuceHeader.h>
+
 namespace ed = ax::NodeEditor;
 namespace node = ax::NodeEditor;
 

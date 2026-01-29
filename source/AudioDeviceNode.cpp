@@ -4,9 +4,11 @@
 DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID)
         : hardwareFIFO(FIFOSIZE),
         hardwareBuffer(2, FIFOSIZE),
+        srcWorkBuffer(2,1024),
         AudioNode(blocktype,initDeviceName,nodeID),
         devicePointer(nullptr),
-        trigger(nullptr),trigAddress(nullptr)
+        trigger(nullptr),
+        trigAddress(nullptr)
 {
     // attempt initial channelcount of 2 if the device allows it
     juce::String err = deviceManager.initialise(
@@ -16,6 +18,14 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
         true,
         Name
     );
+
+
+    for (size_t i = 0; i < ERRFILT; i++)
+    {
+        fillCountBuf[i] = 1024;
+    }
+
+    sampleRateConverter = src_new(SRC_LINEAR, 2, &err4src);
 
     juce::AudioDeviceManager::AudioDeviceSetup setup;
 
@@ -207,29 +217,96 @@ int DeviceNode::writeToFifoFrom(const float* const* input, int numSamples) {
     return size1 + size2;
 }
 
-int DeviceNode::readFromFifoTo(float* const* output, int numSamples)
+int DeviceNode::readFromFifoTo(float* const* output, int numSamples, bool performSRC)
 {
+    int start1, size1, start2, size2;   
 
-    int start1, size1, start2, size2;
-    hardwareFIFO.prepareToRead(numSamples, start1, size1, start2, size2);
+    fillCountBuf[next_fillCountIndex()] = hardwareFIFO.getNumReady();
 
-    if (size1 > 0) {
-        for (int ch = 0; ch < numChannels; ++ch)
-            juce::FloatVectorOperations::copy(output[ch], hardwareBuffer.getReadPointer(ch, start1),
-                size1);
+
+    // 1. Handle non-SRC path as you already do...
+    if (!performSRC || isMainOutput()) {
+       
+        hardwareFIFO.prepareToRead(numSamples, start1, size1, start2, size2);
+
+        if (size1 > 0) {
+            for (int ch = 0; ch < numChannels; ++ch)
+                juce::FloatVectorOperations::copy(output[ch], hardwareBuffer.getReadPointer(ch, start1),
+                    size1);
+        }
+
+        if (size2 > 0) {
+            for (int ch = 0; ch < numChannels; ++ch)
+                juce::FloatVectorOperations::copy(output[ch], hardwareBuffer.getReadPointer(ch, start2), size2);
+
+        }
+        hardwareFIFO.finishedRead(size1 + size2);
+
+        return size1 + size2;
     }
 
-    if (size2 > 0) {
-        for (int ch = 0; ch < numChannels; ++ch)
-            juce::FloatVectorOperations::copy(output[ch], hardwareBuffer.getReadPointer(ch, start2), size2);
 
+
+    // 2. Update PID / Ratio
+    double diff = getAvgFill() - 1024.0;
+    SRC_ratio = SRC_base - (0.000005 * diff); 
+    SRC_ratio = juce::jlimit(0.1, 10.0, SRC_ratio);
+
+    // 3. Calculate how many input samples we need to guarantee 'numSamples' out
+    // We add a small safety margin so the resampler doesn't run dry.
+    int inputNeeded = (int)std::ceil(numSamples / SRC_ratio) + 10;
+
+    // 4. Pull from FIFO into a contiguous JUCE buffer (for interleaving)
+
+    hardwareFIFO.prepareToRead(inputNeeded, start1, size1, start2, size2);
+
+    // Ensure our internal work buffer is large enough for interleaved data
+    srcWorkBuffer.setSize(numChannels, size1 + size2);
+
+    // Copy from ring buffer to contiguous planar work buffer
+    for (int ch = 0; ch < numChannels; ++ch) {
+        if (size1 > 0) srcWorkBuffer.copyFrom(ch, 0, hardwareBuffer, ch, start1, size1);
+        if (size2 > 0) srcWorkBuffer.copyFrom(ch, size1, hardwareBuffer, ch, start2, size2);
     }
 
-    hardwareFIFO.finishedRead(size1 + size2);
+    // 5. Prepare SRC_DATA structure
+    // We need a flat float array for interleaved input and output
+    std::vector<float> interleavedIn(srcWorkBuffer.getNumSamples() * numChannels);
+    std::vector<float> interleavedOut(numSamples * numChannels);
 
+    // Planar -> Interleaved
+    for (int s = 0; s < srcWorkBuffer.getNumSamples(); ++s) {
+        for (int ch = 0; ch < numChannels; ++ch) {
+            interleavedIn[s * numChannels + ch] = srcWorkBuffer.getSample(ch, s);
+        }
+    }
 
+    SRC_DATA data;
+    data.data_in = interleavedIn.data();
+    data.input_frames = srcWorkBuffer.getNumSamples();
+    data.data_out = interleavedOut.data();
+    data.output_frames = numSamples; // We want exactly this many out
+    data.src_ratio = SRC_ratio;
+    data.end_of_input = 0;
 
-    return size1 + size2;
+    // 6. Perform SRC
+    int error = src_process(sampleRateConverter, &data);
+    if (error) {
+        Logger::log("SRC Error: " + string(src_strerror(error)));
+        return 0;
+    }
+
+    // 7. Interleaved -> Planar (Back to Engine Output)
+    for (int s = 0; s < data.output_frames_gen; ++s) {
+        for (int ch = 0; ch < numChannels; ++ch) {
+            output[ch][s] = interleavedOut[s * numChannels + ch];
+        }
+    }
+
+    // 8. Commit the amount actually consumed from the FIFO
+    hardwareFIFO.finishedRead(data.input_frames_used);
+
+    return data.output_frames_gen;
 }
 
 void DeviceNode::prepareOutput() {
@@ -237,14 +314,8 @@ void DeviceNode::prepareOutput() {
     outputBuffer.clear();
 
     if (m_blockType == BlockType::InputDevice) {       
-        readFromFifoTo(outputBuffer.getArrayOfWritePointers(), BLOCKSIZE);
-
-        outputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB));
-
-        if (parameterChanged.load()) {     
-            parameterChanged.store(false);
-        }
-            
+        readFromFifoTo(outputBuffer.getArrayOfWritePointers(), BLOCKSIZE, true);
+        outputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB));          
     }
     else if (m_blockType == BlockType::OutputDevice) {
 
@@ -260,6 +331,9 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
 {
     sampleRate = device->getCurrentSampleRate();
     blockSize = device->getCurrentBufferSizeSamples();
+
+    SRC_base = 48000.0f / sampleRate;
+    SRC_ratio = SRC_base;
 
     if(isInput())
         numChannels = device->getActiveInputChannels().countNumberOfSetBits();
@@ -299,23 +373,10 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             const float* data = this->hardwareBuffer.getWritePointer(0);
 
             samplesWritten = writeToFifoFrom(inputChannelData, numSamples);
-            
-            if (samplesWritten > numSamples) {
-            //    Logger::log("OVERFLOW IN INPUT: SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
-            }
-            if (samplesWritten < numSamples) {
-             //   Logger::log("UNDERRUN IN INPUT (not enough samples): SamplesWritten(" + to_string(samplesWritten) + ") > numSamples(" + to_string(numSamples) + ")");
-            }
         } else {
-         //   Logger::log("INPUT FIFO TOO FULL: fifoFill(" + to_string(fifoFill) + ") > fifoCapacity(" + to_string(fifoCapacity) + ")");
+
         }
     }
-
-
-    // for each I/O device: 
-    // calculate ratio of fifo reading. use PID or similar to modulate ratio to aim at target fill average
-    // 
-    // think: normally, this ratio should be 1, but can oscillate around 1 (shows that its working)
 
     if (m_blockType == BlockType::OutputDevice) {
 
@@ -323,7 +384,6 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
         int samplesRead = readFromFifoTo(outputChannelData, numSamples);
         if (samplesRead < numSamples)
         {
-        //    Logger::log("UNDERRUN IN OUTPUT: SamplesRead(" + to_string(samplesRead) + ") < numSamples(" + to_string(numSamples) + ")");
 
             // Underrun → zero remaining output
             for (int ch = 0; ch < numOutputChannels; ++ch)      // only triggered once i believe, at the start?
@@ -336,12 +396,6 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
 
        if(trigger != nullptr && hardwareFIFO.getNumReady() < BLOCKSIZE)
         trigger->signal();                                                  
-       
-       // trigger engine that the output fifo is getting empty! needs a refill     
-       // fifo should be filled within 1 output sample period
-       // get timestampPair?
-       //  IAudioClock::GetPosition()
-
 
     }
 }

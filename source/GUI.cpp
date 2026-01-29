@@ -960,11 +960,11 @@ void GUI::renderFIFOState() {
 
     float fr = ImGui::GetIO().Framerate;
     static ScrollingBuffer guiData;
-    static std::map<NodeID, ScrollingBuffer> levels;
+    static std::map<NodeID, fifoScroll> levels;
 
     for (auto& dev : prog->audio.fifoLevels) {
         if (!levels.contains(dev.first)) {
-            levels.emplace(dev.first,ScrollingBuffer());      // if it doesnt contain an entry for the device/pin yet, add it!         
+            levels.emplace(dev.first, fifoScroll());      // if it doesnt contain an entry for the device/pin yet, add it!         
         }
     }
 
@@ -980,17 +980,9 @@ void GUI::renderFIFOState() {
     t += ImGui::GetIO().DeltaTime;
     for (auto& dev : prog->audio.fifoLevels){
 
-        // simple block filter
-        static float fifofilter[3];
-        static uint8_t idx = 0;
-        idx = idx == 2 ? 0 : idx + 1;
-        fifofilter[idx] = prog->audio.fifoLevels[dev.first];
-        float filteredValue = 0;    
-        for (uint8_t i = 0; i < 3; i++) {
-            filteredValue += fifofilter[i] / 3;
-        }
-
-         levels[dev.first].AddPoint(t, prog->audio.fifoLevels[dev.first]);
+         levels[dev.first].avgFill.AddPoint(t, prog->audio.fifoLevels[dev.first].avgFill);
+         levels[dev.first].totFill.AddPoint(t, prog->audio.fifoLevels[dev.first].totFill);
+         levels[dev.first].ratio.AddPoint(t, prog->audio.fifoLevels[dev.first].ratio);
     } 
 
    // guiData.AddPoint(t, 1000.0 / fr);           // TODO: make option to pause graphing (halt)
@@ -1008,21 +1000,17 @@ void GUI::renderFIFOState() {
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
 
         for (auto& level : levels) {
-            string actualName;
-
-            if (prog->audio.nodes.contains(level.first)) {
-
-                actualName = prog->audio.nodes.at(level.first)->getBlockName() + " readable";
-            } else if (prog->audio.nodes.contains(level.first - 1)){
-                actualName = prog->audio.nodes.at(level.first - 1)->getBlockName() + " writable"; // this -1 here is so cursed lol
-            }
-           
-            // 1 is readable
-            // 2 is writable
+            string actualName = prog->audio.nodes.at(level.first)->getBlockName();
 
             string devicePlusID = actualName;
-            auto& lvl = level.second;
-            ImPlot::PlotLine(devicePlusID.c_str(), &lvl.Data[0].x, &lvl.Data[0].y, lvl.Data.size(), 0, lvl.Offset, 2 * sizeof(float));
+
+            auto& lvlAvg = level.second.avgFill;
+            auto& lvlTot = level.second.totFill;
+            auto& ratio = level.second.ratio;
+
+            ImPlot::PlotLine((devicePlusID + "average").c_str(), &lvlAvg.Data[0].x, &lvlAvg.Data[0].y, lvlAvg.Data.size(), 0, lvlAvg.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine((devicePlusID + "current").c_str(), &lvlTot.Data[0].x, &lvlTot.Data[0].y, lvlTot.Data.size(), 0, lvlTot.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine((devicePlusID + "ratio").c_str(), &ratio.Data[0].x, &ratio.Data[0].y, ratio.Data.size(), 0, ratio.Offset, 2 * sizeof(float));
         }
 
             

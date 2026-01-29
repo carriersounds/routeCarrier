@@ -40,10 +40,25 @@ void AudioEngine::run() {
                 nodes.at(node)->prepareOutput();        // run processing or fifo read/write
                 nodes.at(node)->sendAudioToNextNodes(); // mix audio into nodes linked to this->output
             }
-        }
-        else {
+
+            for (auto& [id,node] : nodes) {
+
+                if (fifoLevels.contains(id)) {
+
+                    auto* devNode = dynamic_cast<DeviceNode*>(node.get());
+
+                    fifoLevels[id].avgFill = devNode->avgErr;
+                    fifoLevels[id].totFill = devNode->fillCountBuf[devNode->errIdx];
+                    fifoLevels[id].ratio = devNode->SRC_ratio * 1000.0f;
+
+                }
+
+            }
+
 
         }
+
+
 
         nodeLock.unlock();
     }
@@ -200,7 +215,9 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     
 
     m_PinNodePairs.emplace(pinID, blockID);                 // make the parent node easier to find using a LUT                                                                     
-    fifoLevels.emplace(blockID,0);                          // add channel for fifo monitoring (debug)
+    
+    if(blockType == BlockType::InputDevice)
+        fifoLevels.emplace(blockID,FifoData());                          // add channel for fifo monitoring (debug)
     
     sends.emplace(blockID, vector<NodeID>());
 

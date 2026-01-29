@@ -163,4 +163,11 @@ struct RollingBuffer {
     }
 };
 
+struct fifoScroll {
+    ScrollingBuffer avgFill;
+    ScrollingBuffer totFill;
+    ScrollingBuffer ratio;
+};
+
+
 #endif // !GUI_h

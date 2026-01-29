@@ -31,6 +31,13 @@ later:
 
 */
 
+struct FifoData {
+    FifoData() { avgFill = 0; totFill = 0; ratio = 1; }
+    float avgFill;
+    float totFill;
+    float ratio;
+};
+
 class AudioEngine {
 public:
     AudioEngine(Program* prog);
@@ -49,7 +56,8 @@ public:
     vector<NodeID> sortedNodes;                                 // input for topological sort
     std::map<LinkID, BlockLink> links;                          // main interface for generating and deleting links
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
-    std::map<NodeID,float> fifoLevels;                          // for metering buffers
+    
+    std::map<NodeID, FifoData> fifoLevels;                          // for metering buffers
 
     // Node Interface
     NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName, NodeID PresetNodeID = 0);   // preset       // choose input or output, returns next ID
@@ -63,7 +71,6 @@ public:
     void clearAll();
 
     // InsertBetweenLink()//gui
-
 
 private:
     BaseID uniqueID;

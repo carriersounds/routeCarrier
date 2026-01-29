@@ -3,14 +3,12 @@
 
 #define JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED 1
 
-
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")             // disable console window
 #include "mainHeader.hpp"
 #include "AudioEngine.h"
 #include "GUI.h"
 #include "FileIO.h"
 #include "Logger.h"
-
 
 class Program {
 public:

@@ -34,6 +34,9 @@ public:
 
 	// GUI
 	virtual void renderAsNode(float pinSize, float spacing) = 0;
+	bool showInterface = 1;
+	ImVec2 startPos;
+
 
 	// Data
 	PinID inputPin;
@@ -43,6 +46,7 @@ public:
 	double sampleRate = 48000;
 	int blockSize = BLOCKSIZE;
 	int numChannels = 2;
+
 
 protected:
 	juce::AudioBuffer<float> outputBuffer;		// can only be filled by itself

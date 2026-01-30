@@ -1,7 +1,6 @@
 ﻿#include "AudioEffects.h"
 #include "Logger.h"
 
-#define ADD_ID(x) ((x + to_string(ID)).c_str())
 
 //========= PROCESSING ===========
 void Equalizer::processDSP(juce::dsp::AudioBlock<float>& block) {
@@ -460,7 +459,6 @@ void Compressor::renderInterface(float nodeW) {
 
     bool isChanged = false;
 
-    
     if (ImGui::BeginTable(ADD_ID("d_tab"), 3, ImGuiTableFlags_BordersInner | ImGuiTableFlags_SizingFixedFit, { 450,80 })) {
 
         ImGui::TableNextRow();
@@ -520,6 +518,8 @@ void Compressor::renderInterface(float nodeW) {
 
         ImGui::EndTable();
     }
+
+    
 
     if (isChanged)
         parameterChanged.store(true);

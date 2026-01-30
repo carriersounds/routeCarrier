@@ -38,14 +38,26 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
 }
  
 void DeviceNode::renderAsNode(float pinSize, float spacing) {
-
     // Adjust stereo/mono/channelcount split
     
     // ============== TITLE CARD ==============
+    startPos = ImGui::GetCursorPos();
     node::BeginNode(ID);
-
     ImGui::Text(getBlockName().c_str()); 
     ImVec2 p = ImGui::GetCursorScreenPos();
+
+    ImGui::SameLine(0,50);
+    INDENT_NEXT
+    tools::ImShiftCursor(0, -3);
+
+    if (showInterface) {
+        if (ImGui::Button(ADD_ID(">  ##"), { 40,20 })) { showInterface = !showInterface; }
+        ImGui::SameLine(); ImGui::Dummy({ 1,1 });
+    }
+    else {
+        if (ImGui::Button(ADD_ID("v  ##"), { 40,20 })) { showInterface = !showInterface; }
+        ImGui::SameLine(); ImGui::Dummy({ 1,1 });
+    }
 
     if (isMainOutput()) {    
         ImGui::SameLine();
@@ -61,20 +73,22 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
 
     ImGui::Dummy(ImVec2(0, 6));
 
+    // beginpin is inside
     if (isInput()){
 
-        guiMtx.lock();
-        tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
-        guiMtx.unlock();
-
-        ImGui::SameLine();
-
-        INDENT_NEXT
-        string knob = to_string(ID) + "##Input Gain";
-        ImGui::PushID(knob.c_str());
-        if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
-        ifDoubleClicked{ (deviceGain_dB = 0.0f); parameterChanged.store(true); }
-        ImGui::PopID();
+        if (showInterface) {
+            guiMtx.lock();
+            tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+            guiMtx.unlock();
+            ImGui::SameLine();
+            INDENT_NEXT
+                string knob = to_string(ID) + "##Input Gain";
+            ImGui::PushID(knob.c_str());
+            if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+            ifDoubleClicked{ (deviceGain_dB = 0.0f); parameterChanged.store(true); }
+            ImGui::PopID();
+        }
+       
         // ============== OUTPUT PIN ==============        
         const char* labelout = "FROM DEVICE        ";
         ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
@@ -94,26 +108,22 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     }
     else if(isOutput())     // Draw output Node
     {
-
-        INDENT_NEXT
         string knob = to_string(ID) + "##Output Gain";
-        ImGui::PushID(knob.c_str());
-        if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
-        ifDoubleClicked{ (deviceGain_dB = 0.0f); parameterChanged.store(true); }
-        ImGui::PopID();
-
         const char* labelin = "    TO DEVICE";
         ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
 
+        if (showInterface) {
+            INDENT_NEXT     
+            ImGui::PushID(knob.c_str());
+            if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+            ifDoubleClicked{ (deviceGain_dB = 0.0f); parameterChanged.store(true); }
+            ImGui::PopID();
+            ImGui::SameLine(0, 30);
+            guiMtx.lock();
+            tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+            guiMtx.unlock();
 
-        ImGui::SameLine(0,30);
-        
-        guiMtx.lock();
-        tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
-        guiMtx.unlock();
-
-
-
+        }
         // ============== PIN ==============
         node::BeginPin(inputPin, ed::PinKind::Input);
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 2 * spacing);
@@ -123,11 +133,8 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
         dli->AddCircleFilled(ImVec2(posi.x, posi.y + textSizeIn.y * 0.5f), textSizeIn.y * 0.5f, IM_COL32(30, 150, 230, 255));
         ImGui::TextUnformatted(labelin);
         node::EndPin();
-
-
-
     }     
-      
+        
     node::EndNode();
 }
 

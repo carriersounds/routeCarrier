@@ -43,6 +43,8 @@ namespace node = ax::NodeEditor;
 
 #define INDENT_NEXT ImGui::Dummy({ 10,10 }); ImGui::SameLine();
 #define ifDoubleClicked if (ImGui::IsItemActive() && ImGui::IsMouseDoubleClicked(0))
+#define ADD_ID(x) ((x + to_string(ID)).c_str())
+
 
 using std::vector;
 using std::string;
@@ -65,6 +67,12 @@ using std::unique_ptr;
 using std::make_unique;
 
 namespace tools {
+
+    inline void ImShiftCursor(float x, float y) {
+        ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(x, y));
+    }
+
+
     template <typename T>
     void RemoveObjectFromVector(std::vector<T>& vec, const T& value)
     {

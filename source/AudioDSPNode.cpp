@@ -12,17 +12,21 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 
     node::BeginNode(ID);
 
-    // ============== TITLE ==============  
+    // ============== TITLE ============== 
+    startPos = ImGui::GetCursorPos();
     ImGui::Text(getBlockName().c_str());
+    ImGui::SameLine(); 
+    ImGui::Dummy({ 100,5 });
+
     ImVec2 p = ImGui::GetCursorScreenPos();
     float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
     ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
     ImGui::Dummy(ImVec2(0, 6));
 
     // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX =====
- 
-    renderInterface(w);     
 
+    if(showInterface)
+    renderInterface(w);     
 
     // ============== INPUT PIN ============== 
     const char* labelin = "    IN";
@@ -50,7 +54,7 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node::GetNodeSize(ID).x - (textSizeOut.x + spacing + preciseOffset));
     node::BeginPin(outputPin, ed::PinKind::Output);
-    ImGui::TextUnformatted(labelout);
+    ImGui::TextUnformatted(labelout);                   // this determines the feedback loop for the node size for some reason
     ImGui::SameLine();
 
     // Output Pin icon
@@ -59,6 +63,19 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
     poso.x = poso.x - textSizeOut.y - spacing;
     dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f), textSizeOut.y * 0.5f, IM_COL32(250, 150, 30, 255));
     node::EndPin();
+
+
+    // collapse button
+    ImGui::SetNextItemWidth(100);
+    ImGui::SetCursorPosX(startPos.x + node::GetNodeSize(ID).x - (spacing + preciseOffset));
+    ImGui::SetCursorPosY(startPos.y - 3);
+    if (showInterface) {
+        if (ImGui::Button(ADD_ID(">  ##"),{40,20})) { showInterface = !showInterface; }
+    } else {
+        if (ImGui::Button(ADD_ID("v  ##"), { 40,20 })) { showInterface = !showInterface; }
+    }
+
+
 
     node::EndNode();
 }

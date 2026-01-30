@@ -47,17 +47,21 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     ImVec2 p = ImGui::GetCursorScreenPos();
 
     ImGui::SameLine(0,50);
-    INDENT_NEXT
+    tools::ImShiftCursor(0, -3);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 5,3 });
+    tools::toggleButton(ADD_ID("M##"), bypass, { 0,0 });  
+    ImGui::SameLine();
     tools::ImShiftCursor(0, -3);
 
     if (showInterface) {
-        if (ImGui::Button(ADD_ID(">  ##"), { 40,20 })) { showInterface = !showInterface; }
+        if (ImGui::Button(ADD_ID(">##"), { 0,0 })) { showInterface = !showInterface; }
         ImGui::SameLine(); ImGui::Dummy({ 1,1 });
     }
     else {
-        if (ImGui::Button(ADD_ID("v  ##"), { 40,20 })) { showInterface = !showInterface; }
+        if (ImGui::Button(ADD_ID("v##"), { 0,0 })) { showInterface = !showInterface; }
         ImGui::SameLine(); ImGui::Dummy({ 1,1 });
     }
+    ImGui::PopStyleVar();
 
     if (isMainOutput()) {    
         ImGui::SameLine();
@@ -70,6 +74,7 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     }    
     float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
     ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
+
 
     ImGui::Dummy(ImVec2(0, 6));
 
@@ -304,12 +309,15 @@ void DeviceNode::prepareOutput() {
 
     if (m_blockType == BlockType::InputDevice) {       
         readFromFifoTo(outputBuffer.getArrayOfWritePointers(), BLOCKSIZE);
-        outputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB));          
+        outputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB)); 
+
+        if (bypass) outputBuffer.applyGain(0);
     }
     else if (m_blockType == BlockType::OutputDevice) {
         inputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB));
-        copyBuffer(&outputBuffer, &inputBuffer);    
-        writeToFifoFrom(inputBuffer.getArrayOfReadPointers(), BLOCKSIZE);
+        copyBuffer(&outputBuffer, &inputBuffer); 
+        if (bypass) outputBuffer.applyGain(0);
+        writeToFifoFrom(outputBuffer.getArrayOfReadPointers(), BLOCKSIZE);
     }
 }
 

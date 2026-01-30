@@ -22,9 +22,6 @@ public:
     virtual void renderInterface(float nodeW) = 0;                              // render actual effect interface / params
     virtual EffectType getType() = 0;                                       // used by GUI for parameter management
 
-
-    bool bypassed = false;                                                  // might be used for a simple toggle later
-
 protected:
     virtual void prepareDSP(const juce::dsp::ProcessSpec&) = 0;
     virtual void processDSP(juce::dsp::AudioBlock<float>&) = 0;

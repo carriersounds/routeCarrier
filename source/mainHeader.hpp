@@ -45,7 +45,6 @@ namespace node = ax::NodeEditor;
 #define ifDoubleClicked if (ImGui::IsItemActive() && ImGui::IsMouseDoubleClicked(0))
 #define ADD_ID(x) ((x + to_string(ID)).c_str())
 
-
 using std::vector;
 using std::string;
 using std::memcpy;
@@ -70,6 +69,23 @@ namespace tools {
 
     inline void ImShiftCursor(float x, float y) {
         ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(x, y));
+    }
+
+    inline void toggleButton(const char* label, bool& var, const ImVec2& size = ImVec2(0, 0)) {
+
+        if (var) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.75f, 0.95f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.75f, 0.95f, 1.0f));
+        }
+
+        if (ImGui::Button(label, size)) {
+            var = !var;
+            if (!var) ImGui::PopStyleColor(2);
+        }
+        else {
+            if (var) ImGui::PopStyleColor(2);
+        }
+
     }
 
 

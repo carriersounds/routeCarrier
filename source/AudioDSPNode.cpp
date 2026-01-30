@@ -16,7 +16,7 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
     startPos = ImGui::GetCursorPos();
     ImGui::Text(getBlockName().c_str());
     ImGui::SameLine(); 
-    ImGui::Dummy({ 100,5 });
+    ImGui::Dummy({ 120,5 });
 
     ImVec2 p = ImGui::GetCursorScreenPos();
     float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
@@ -25,8 +25,10 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 
     // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX =====
 
-    if(showInterface)
-    renderInterface(w);     
+    if (showInterface) {
+        renderInterface(w);
+    }
+        
 
     // ============== INPUT PIN ============== 
     const char* labelin = "    IN";
@@ -66,24 +68,32 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 
 
     // collapse button
-    ImGui::SetNextItemWidth(100);
-    ImGui::SetCursorPosX(startPos.x + node::GetNodeSize(ID).x - (spacing + preciseOffset));
+
+    ImGui::SetCursorPosX(startPos.x + node::GetNodeSize(ID).x - (spacing + preciseOffset - 20));
     ImGui::SetCursorPosY(startPos.y - 3);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 5,3 });
+
     if (showInterface) {
-        if (ImGui::Button(ADD_ID(">  ##"),{40,20})) { showInterface = !showInterface; }
+        if (ImGui::Button(ADD_ID(">##"))) { showInterface = !showInterface; }
     } else {
-        if (ImGui::Button(ADD_ID("v  ##"), { 40,20 })) { showInterface = !showInterface; }
+        if (ImGui::Button(ADD_ID("v##"))) { showInterface = !showInterface; }
     }
 
+    ImGui::SetCursorPosX(startPos.x + node::GetNodeSize(ID).x - (spacing + preciseOffset + 40));
+    ImGui::SetCursorPosY(startPos.y - 3);
+    tools::toggleButton(ADD_ID("bypass##"), bypass);
 
-
+    ImGui::PopStyleVar();
     node::EndNode();
 }
 
 void DSPNode::prepareOutput() {
     outputBuffer.clear();
     outputBuffer.makeCopyOf(inputBuffer, false);    // output buf is the process context
-    juce::MidiBuffer empt;                          // function needs it RIP
+    juce::MidiBuffer empt;
+    
+    if(!bypass)
     processBlock(outputBuffer, empt);
 }
 

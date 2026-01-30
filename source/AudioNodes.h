@@ -46,7 +46,7 @@ public:
 	double sampleRate = 48000;
 	int blockSize = BLOCKSIZE;
 	int numChannels = 2;
-
+	bool bypass = false;                      // simple toggle 
 
 protected:
 	juce::AudioBuffer<float> outputBuffer;		// can only be filled by itself

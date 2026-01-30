@@ -392,7 +392,7 @@ void GUI::renderMenuBar() {
 
     
     if (ImGui::IsKeyDown(ImGuiMod_Alt) && ImGui::IsKeyReleased(ImGuiKey_L)) showLog = !showLog;
-    if (ImGui::IsKeyDown(ImGuiMod_Alt) && ImGui::IsKeyReleased(ImGuiKey_T)) showTimings = !showTimings;
+    if (ImGui::IsKeyDown(ImGuiMod_Alt) && ImGui::IsKeyReleased(ImGuiKey_T)) showMetrics = !showMetrics;
 
     if (ImGui::IsKeyPressed(ImGuiKey_F9)) setViewport(UI::hide);
     if (ImGui::IsKeyPressed(ImGuiKey_F10)) setViewport(UI::hide);
@@ -484,7 +484,7 @@ void GUI::renderMenuBar() {
             ImGui::Separator();
 
             if (ImGui::BeginMenu("Show Panels")) {
-                ImGui::Checkbox("Process Timers", &showTimings);
+                ImGui::Checkbox("Process Timers", &showMetrics);
                 ImGui::Checkbox("Log window", &showLog);
                 ImGui::Checkbox("Demo Windows", &showDemos);
                 ImGui::Checkbox("Mixer Panel", &showMixer);
@@ -660,6 +660,25 @@ void GUI::renderToolbar() {
         ImGui::EndDragDropSource();
     }
 
+    ImGui::SameLine();
+    if (ImGui::Button("Channel utility", { 180,80 })) prog->audio.addNewDSPNode(EffectType::ChannelUtil);
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+    {
+        dropper = DragDropBlock::ChannelUtil;
+        // triggers only on 1st button click
+        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+        ImGui::EndDragDropSource();
+    }
+
+    if (ImGui::Button("Compressor", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Compressor);
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+    {
+        dropper = DragDropBlock::Compressor;
+        // triggers only on 1st button click
+        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+        ImGui::EndDragDropSource();
+    }
+
 
     ImGui::NewLine();
     ImGui::NewLine();
@@ -803,6 +822,14 @@ void GUI::renderMixPanel() {
                 case DragDropBlock::Saturator:
                     nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Saturator);
                     Logger::log("Added Saturator", level_INFO);
+                    break;
+                case DragDropBlock::ChannelUtil:
+                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::ChannelUtil);
+                    Logger::log("Added Channel util", level_INFO);
+                    break;
+                case DragDropBlock::Compressor:
+                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Compressor);
+                    Logger::log("Added Compressor", level_INFO);
                     break;
                 default:
                     break;
@@ -951,66 +978,60 @@ void GUI::renderDeviceList() {
 void GUI::renderMeters() {
 
 
-    if (!showTimings) return;
+    if (!showMetrics) return;
 
-    ImGui::Begin("Metering", &showTimings, ImGuiWindowFlags_NoFocusOnAppearing);
+    ImGui::Begin("System Metrics", &showMetrics);
+
+    ImGui::Indent(10);
+
+
 
     ImGui::NewLine();
-
-    ImGui::SeparatorText("Engine Stats");
-
-    INDENT_NEXT
-
-    ImGui::Text("Engine Clock Period: %05.2f ms", prog->audio.engineClockTimeMs);
-
-    INDENT_NEXT
+    ImGui::SeparatorText("Engine");
+    ImGui::Text("Engine Clock Period: %05.2f ms (%04.1f Hz)", prog->audio.engineClockTimeMs, 1000.0f/prog->audio.engineClockTimeMs);
     ImGui::Text("Engine Process time: %05.2f ms", prog->audio.engineProcessTimeMs);
-    
+    ImGui::NewLine();
+    ImGui::Text("Single threaded load");
+    ImGui::ProgressBar(prog->audio.engineProcessTimeMs / prog->audio.engineClockTimeMs, {ImGui::GetContentRegionAvail().x - 80, 20});
+    ImGui::SameLine(); ImGui::Text("CPU LOAD");
+
     ImGui::NewLine();
 
-    ImGui::SeparatorText("FIFO Metering");
-    // ENGINE FPS
+    if (ImGui::TreeNode("Hardware Buffers")) {
 
-    // PROCESS TIME
+        float fr = ImGui::GetIO().Framerate;
+        static ScrollingBuffer guiData;
+        static std::map<NodeID, fifoScroll> levels;
 
-
-
-
-    float fr = ImGui::GetIO().Framerate;
-    static ScrollingBuffer guiData;
-    static std::map<NodeID, fifoScroll> levels;
-
-    for (auto& dev : prog->audio.fifoLevels) {
+        for (auto& dev : prog->audio.fifoLevels) {
         if (!levels.contains(dev.first)) {
             levels.emplace(dev.first, fifoScroll());      // if it doesnt contain an entry for the device/pin yet, add it!         
         }
     }
 
-    vector<NodeID> lvlToDelete;
-    for (auto& lvl : levels) 
-        if (!prog->audio.fifoLevels.contains(lvl.first)) 
-            lvlToDelete.push_back(lvl.first);
-         
-    for (auto& lvl : lvlToDelete)
-        levels.erase(lvl);
+        vector<NodeID> lvlToDelete;
+        for (auto& lvl : levels) 
+            if (!prog->audio.fifoLevels.contains(lvl.first)) 
+                lvlToDelete.push_back(lvl.first);
+             
+        for (auto& lvl : lvlToDelete)
+            levels.erase(lvl);
 
-    static float t = 0;
-    t += ImGui::GetIO().DeltaTime;
-    for (auto& dev : prog->audio.fifoLevels){
+        static float t = 0;
+        t += ImGui::GetIO().DeltaTime;
+        for (auto& dev : prog->audio.fifoLevels){
 
          levels[dev.first].avgFill.AddPoint(t, prog->audio.fifoLevels[dev.first].avgFill);
          levels[dev.first].totFill.AddPoint(t, prog->audio.fifoLevels[dev.first].totFill);
          levels[dev.first].ratio.AddPoint(t, prog->audio.fifoLevels[dev.first].ratio);
     } 
 
-   // guiData.AddPoint(t, 1000.0 / fr);           // TODO: make option to pause graphing (halt)
+        // guiData.AddPoint(t, 1000.0 / fr);           // TODO: make option to pause graphing (halt)
+        static float history = 10.0f;
 
-    static float history = 20.0f;
-    static float sleeperMicroseconds = 500;
+        ImGui::SliderFloat("History", &history, 1, 14, "%.1f s");
 
-    ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
-
-    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1), ImPlotFlags_NoMouseText)) {
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1), ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoTickLabels);
       //  ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
         ImPlot::SetupAxisLimits(ImAxis_X1, (double)t - history, t, ImGuiCond_Always);
@@ -1036,7 +1057,12 @@ void GUI::renderMeters() {
 
         ImPlot::EndPlot();
     }
+    
+        ImGui::TreePop();
+    }
 
+
+    ImGui::Unindent();
     ImGui::End();
     
 }

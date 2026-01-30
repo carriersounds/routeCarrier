@@ -47,7 +47,7 @@ public:
     static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     // Module visibility
-    bool showTimings = true;
+    bool showMetrics = true;
     bool showLog = true;
     bool showDemos = false;
     bool showMixer = true;
@@ -114,8 +114,8 @@ struct ScrollingBuffer {
 };
 struct HistBuffer {
 
-    int HIST_DEPTH = 1024;
-    int HIST_WIDTH = 1024; 
+    size_t HIST_DEPTH = 1024;
+    size_t HIST_WIDTH = 1024;
     size_t maxSize;
     size_t offset;
     int histCounter;

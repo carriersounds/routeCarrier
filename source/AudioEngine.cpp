@@ -21,7 +21,6 @@ AudioEngine::~AudioEngine() {
 
 void AudioEngine::run() {
 
-
     Counter engineClock;
     Counter processClock;
 
@@ -29,14 +28,12 @@ void AudioEngine::run() {
            
         engineClockTimeMs = engineClock.getDurationLoop() / 1000.0f;
         
-
         if (mainOutputReady)
             requestNewAudioBlock.wait();                // wait for main output fifo to empty below BLOCKSIZE
         else
             std::this_thread::sleep_for(10.60ms);       // simulate tickrate for routing previews. 48khz at 512 samples = 10.66ms (assuming 60us processing)
 
         nodeLock.lock();
-
         processClock.startTimer();
 
         if (enableRouting) {
@@ -50,26 +47,18 @@ void AudioEngine::run() {
                 nodes.at(node)->sendAudioToNextNodes(); // mix audio into nodes linked to this->output
             }
 
-            for (auto& [id,node] : nodes) {
-
+            for (auto& [id, node] : nodes) 
                 if (fifoLevels.contains(id)) {
-
                     auto* devNode = dynamic_cast<DeviceNode*>(node.get());
-
-                    fifoLevels[id].avgFill = devNode->avgErr;
-                    fifoLevels[id].totFill = devNode->fillCountBuf[devNode->errIdx];
+                    fifoLevels[id].avgFill = devNode->avgFill;
+                    fifoLevels[id].totFill = devNode->currentFill;
                     fifoLevels[id].ratio = devNode->SRC_ratio * 1000.0f;
 
                 }
-
-            }
-
+            
 
         }
-
         engineProcessTimeMs = processClock.getDuration() / 1000.0f;
-
-
         nodeLock.unlock();
     }
 }
@@ -226,7 +215,7 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
 
     m_PinNodePairs.emplace(pinID, blockID);                 // make the parent node easier to find using a LUT                                                                     
     
-    if(blockType == BlockType::InputDevice)
+   // if(blockType == BlockType::InputDevice)
         fifoLevels.emplace(blockID,FifoData());                          // add channel for fifo monitoring (debug)
     
     sends.emplace(blockID, vector<NodeID>());
@@ -268,6 +257,15 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect, NodeID presetNodeID) 
         break;
     case EffectType::Saturator:
         nodes.emplace(blockID, make_unique<Saturator>(BlockType::DSP, "Saturator", blockID));
+        break;
+    case EffectType::ChannelUtil:
+        nodes.emplace(blockID, make_unique<ChannelUtility>(BlockType::DSP, "Channel Utility", blockID));
+        break;
+    case EffectType::Compressor:
+        nodes.emplace(blockID, make_unique<Compressor>(BlockType::DSP, "Compressor", blockID));
+        break;
+    case EffectType::Phaser:
+       // nodes.emplace(blockID, make_unique<Phaser>(BlockType::DSP, "Saturator", blockID));
         break;
     default:
         break;

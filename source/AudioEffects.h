@@ -18,7 +18,8 @@ enum class DistortionType {
     softclip,
     hardclip,
     sinfold,
-    diode
+    diode,
+    sinfold_cubes
 };
 
 using Filt = juce::dsp::IIR::Filter<float>;
@@ -26,6 +27,7 @@ using Coeffs = juce::dsp::IIR::Coefficients<float>;
 using JuceFilter = juce::dsp::ProcessorDuplicator<Filt, Coeffs>;
 using JuceGain = juce::dsp::Gain<float>;
 using JuceShaper = juce::dsp::WaveShaper<float>;
+using JuceCompressor = juce::dsp::Compressor<float>;
 
 class Equalizer final : public DSPNode
 {
@@ -141,12 +143,11 @@ private:
     {
         float mag = 1.0f;
 
-
         for (int i = 0; i < chainVec.size(); i++) {
             auto& filter = chainVec[i];
 
             if (bandSettings[i].enabled)
-            mag *= filter.state->getMagnitudeForFrequency(freq, sampleRate);
+            mag *= (float)filter.state->getMagnitudeForFrequency(freq, sampleRate);
         }
    
         return mag;
@@ -262,7 +263,7 @@ class Saturator final : public DSPNode
 public:
     Saturator(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID), 
         inputGainDB(0.0f),
-        outputGainDB(0.0f) ,
+        outputGainDB(0.0f),
         distortionType(0),
         dryWetMix(1.0f){
  
@@ -291,20 +292,26 @@ protected:
         auto& waveshaper = saturator.template get<1>();
         switch (type)
         {
-        case DistortionType::softclip:waveshaper.functionToUse = [](float x) {return tanh(10.0f*x)*0.1f; };
+        case DistortionType::softclip: waveshaper.functionToUse = [](float x) {return tanh(10.0f*x)*0.1f; };
             break;
-        case DistortionType::hardclip:waveshaper.functionToUse = [](float x) {return juce::jlimit(float(-0.1), float(0.1), x); };
+        case DistortionType::hardclip: waveshaper.functionToUse = [](float x) {return juce::jlimit(float(-0.1), float(0.1), x); };
             break;
-        case DistortionType::sinfold:waveshaper.functionToUse = [](float x) {return sin(10.0f*x)*0.1f; };
+        case DistortionType::sinfold: waveshaper.functionToUse = [](float x) {return sin(10.0f*x)*0.1f; };
             break;
-        case DistortionType::diode:waveshaper.functionToUse = [](float x) {
-            if (x > 0.1f) {
-                float abovThres = 0.1f - x;
-                return 0.1f + (0.2f * abovThres);
+        case DistortionType::diode: {
+            waveshaper.functionToUse = [](float x) {
+            if (x > 0.05f) {
+                float abovThres = 0.05f - x;
+
+                return 0.05f + (tanh(100.0f * abovThres) * 0.01f);
+
             } else {
-                return x;}     
+                return tanh(10.0f * x) * 0.1f;}
             };
-            break;
+        }
+        break;        
+        case DistortionType::sinfold_cubes: waveshaper.functionToUse = [](float x) {return sin(50.0f * (float)pow(x, 3)) * 0.1f; };
+              break;
         default:
             break;
         }
@@ -374,6 +381,70 @@ private:
 
     juce::dsp::ProcessorChain<JuceGain, JuceShaper, JuceGain> saturator;
     juce::dsp::DryWetMixer<float> drywet;
+
+};
+
+class Compressor final :public DSPNode {
+public:
+    Compressor(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID){
+        
+        outputGainDB = 0;
+        dryWetMix = 1.0f;
+
+        attack = 10.0f;
+        release =10.0f;
+        ratio = 4.0f;
+        threshold = -12.0f;
+
+        compressor.get<0>().setAttack(attack);
+        compressor.get<0>().setRelease(release);
+        compressor.get<0>().setThreshold(threshold);
+        compressor.get<0>().setRatio(ratio);
+        compressor.get<1>().setGainDecibels(outputGainDB);
+        drywet.setWetMixProportion(dryWetMix);
+    }
+
+    float outputGainDB;
+    float dryWetMix;
+
+    float attack;
+    float release;
+    float ratio;
+    float threshold;
+
+
+protected:
+    void renderInterface(float nodeW) override;
+    EffectType getType() { return EffectType::Gain; }
+    void prepareDSP(const juce::dsp::ProcessSpec& spec) override { compressor.reset(); compressor.prepare(spec); drywet.reset(), drywet.prepare(spec);}
+    void processDSP(juce::dsp::AudioBlock<float>& block) override;
+
+private:
+
+    juce::dsp::ProcessorChain<JuceCompressor, JuceGain> compressor;
+    juce::dsp::DryWetMixer<float> drywet;
+
+};
+
+class ChannelUtility final : public DSPNode 
+{
+public:
+    ChannelUtility(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID), gainValueDB(0.0f) {
+        gain.setGainDecibels(gainValueDB);
+    }
+
+    float gainValueDB;
+
+protected:
+    void renderInterface(float nodeW) override;
+    void processDSP(juce::dsp::AudioBlock<float>& block) override;
+    EffectType getType() { return EffectType::Gain; }
+    void prepareDSP(const juce::dsp::ProcessSpec & spec) override { gain.reset(); gain.prepare(spec); }
+
+
+private:
+        JuceGain gain;
+    
 
 };
 

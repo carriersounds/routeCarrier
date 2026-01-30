@@ -112,7 +112,7 @@ namespace tools {
 
         static int mapID = 0;
 
-        string lvlID = "lv" + to_string(ID);    // ??
+        string lvlID = "lv" + to_string(ID);
 
         if (ImPlot::BeginPlot(lvlID.c_str(), ImVec2(drawWidth, 60), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
 
@@ -159,10 +159,7 @@ namespace tools {
         if (ImPlot::BeginPlot(lvlID.c_str(), ImVec2(60, drawLength), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
 
             // Calculate the height of each segment (NOT POSITION!). position is calculated from 0 i suppose
-            float dataBr[3];
-            dataBr[0] = peakDB;
-            dataBr[1] = rmsDB - peakDB;
-            dataBr[2] = -(lowerLimit + rmsDB);
+            float dataBr[3] = {peakDB,rmsDB - peakDB, -(lowerLimit + rmsDB) };
 
             const char* labels[] = { "Min", "med1", "med2" };
             ImPlot::SetupAxisLimits(ImAxis_Y1, -lowerLimit, 0);
@@ -295,7 +292,7 @@ namespace tools {
             ImPlot::PlotPieChart(dumby, dumval, 2, center.x, center.y, radius * 0.8f, " ", 0, ImPlotPieChartFlags_Normalize);
             ImPlot::PopColormap();
 
-            float start_angle_radians = angle0 * 2.0f * IM_PI / 360.0;
+            float start_angle_radians = angle0 * 2.0f * IM_PI / 360.0f;
 
             // Text markers
             for (int i = 0; i < 4; ++i) {
@@ -356,7 +353,7 @@ namespace tools {
             ImPlot::PlotPieChart(dumby, dumval, 2, center.x, center.y, radius * 0.8f, " ", 0, ImPlotPieChartFlags_Normalize);
             ImPlot::PopColormap();
 
-            float start_angle_radians = angle0 * 2.0f * IM_PI / 360.0;
+            float start_angle_radians = angle0 * 2.0f * IM_PI / 360.0f;
 
             // Text markers
             for (int i = 0; i < 6; ++i) {
@@ -390,7 +387,9 @@ enum class DragDropBlock {
     Gain,
     Reverb,
     EQ,
-    Saturator
+    Saturator,
+    ChannelUtil,
+    Compressor
 };
 
 enum class EffectType {
@@ -400,7 +399,9 @@ enum class EffectType {
     Gain,
     Reverb,
     EQ,
-    Saturator
+    Saturator,
+    ChannelUtil,
+    Compressor
 };
 
 enum class BlockType {
@@ -515,7 +516,7 @@ struct Counter {
         timepoint checkNow = std::chrono::high_resolution_clock::now();
         float timeChunk = getTimeDiff_us(startPoint, checkNow);
         startPoint = checkNow;
-        return (" " + to_string((int)abs(timeChunk)) + " us");
+        return (" " + to_string((size_t)abs(timeChunk)) + " us");
 
     }
 

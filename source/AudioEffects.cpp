@@ -1,6 +1,8 @@
 ﻿#include "AudioEffects.h"
 #include "Logger.h"
 
+#define ADD_ID(x) ((x + to_string(ID)).c_str())
+
 //========= PROCESSING ===========
 void Equalizer::processDSP(juce::dsp::AudioBlock<float>& block) {
 
@@ -127,6 +129,26 @@ void EffectRack::processDSP(juce::dsp::AudioBlock<float>& block) {
 
     }
 }
+
+void Compressor::processDSP(juce::dsp::AudioBlock<float>& block) {
+
+    if (parameterChanged.load()) {     
+        compressor.get<0>().setAttack(attack);
+        compressor.get<0>().setRelease(release);
+        compressor.get<0>().setThreshold(threshold);
+        compressor.get<0>().setRatio(ratio);
+        compressor.get<1>().setGainDecibels(outputGainDB);
+        drywet.setWetMixProportion(dryWetMix);
+        parameterChanged.store(false);
+    }
+
+    drywet.pushDrySamples(block);
+    compressor.process(juce::dsp::ProcessContextReplacing<float>(block));
+    drywet.mixWetSamples(block);
+
+}
+
+void ChannelUtility::processDSP(juce::dsp::AudioBlock<float>& block){}
 
 //========= GRAPHICAL INTERFACE ===========
 void Equalizer::renderInterface(float nodeW) {
@@ -343,6 +365,8 @@ void Gain::renderInterface(float nodeW) {
     tools::drawGainMonitorVertic(GUIbuffer, nodeW, ID);
     guiMtx.unlock();
 
+    ImGui::NewLine(); // spacing
+
 }
 
 void Reverb::renderInterface(float nodeW) {
@@ -375,7 +399,7 @@ void Saturator::renderInterface(float nodeW) {
 
     bool isChanged = false;
 
-    if (ImGui::BeginTable("d_tab", 4, ImGuiTableFlags_BordersInner | ImGuiTableFlags_Resizable, { 500,100 })) {
+    if (ImGui::BeginTable(ADD_ID("d_tab"), 4, ImGuiTableFlags_BordersInner | ImGuiTableFlags_SizingFixedFit, { 480,100 })) {
 
 
         ImGui::TableNextRow();
@@ -400,6 +424,8 @@ void Saturator::renderInterface(float nodeW) {
         if (ImGui::RadioButton(("SineFold##" + to_string(ID)).c_str(), &distortionType, 2)) isChanged = true;
         INDENT_NEXT
         if (ImGui::RadioButton(("Diode##" + to_string(ID)).c_str(), &distortionType, 3)) isChanged = true;
+        INDENT_NEXT
+        if (ImGui::RadioButton(("Cubed Sine##" + to_string(ID)).c_str(), &distortionType, 4)) isChanged = true;
 
         ImGui::PopStyleColor(2);
 
@@ -410,10 +436,11 @@ void Saturator::renderInterface(float nodeW) {
 
         ImGui::SameLine();
         INDENT_NEXT
-        if (ImGuiKnobs::Knob(("Dry/Wet##" + to_string(ID)).c_str(), &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+        if (ImGuiKnobs::Knob(ADD_ID("Dry/Wet##"), &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
         
         ImGui::TableNextColumn();
         
+        INDENT_NEXT
         guiMtx.lock();
         tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
         guiMtx.unlock();
@@ -428,3 +455,74 @@ void Saturator::renderInterface(float nodeW) {
 void EffectRack::renderInterface(float nodeW) {
 
 }
+
+void Compressor::renderInterface(float nodeW) {
+
+    bool isChanged = false;
+
+    
+    if (ImGui::BeginTable(ADD_ID("d_tab"), 3, ImGuiTableFlags_BordersInner | ImGuiTableFlags_SizingFixedFit, { 450,80 })) {
+
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.11f, 0.23f, 0.34f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.11f, 0.43f, 0.54f, 1.0f));
+
+        INDENT_NEXT
+        ImGui::PopStyleColor(2);
+
+        ImGui::PushItemWidth(100);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.11f, 0.23f, 0.34f, 1.0f));
+
+        ImGui::Dummy({ 0,5 });
+
+        if (ImGui::DragFloat(("Attack##" + to_string(ID)).c_str(), &attack,0, 0, 20000, "%.2f ms", ImGuiSliderFlags_Logarithmic)) {       
+            isChanged = true;
+        }
+
+        if (ImGui::DragFloat(("Release##" + to_string(ID)).c_str(), &release,0, 0, 20000, "%.2f ms", ImGuiSliderFlags_Logarithmic)) {
+            isChanged = true;
+        }
+        ImGui::Dummy({ 20,20 });
+
+        if (ImGui::DragFloat(("Threshold##" + to_string(ID)).c_str(), &threshold,0, -100, 6, "%.2f dB", ImGuiSliderFlags_Logarithmic)) {
+            isChanged = true;
+        }
+
+        if (ImGui::DragFloat(("Ratio##" + to_string(ID)).c_str(), &ratio,0, 1, 10000, "%.2f", ImGuiSliderFlags_Logarithmic)) {
+            isChanged = true;
+        }
+
+        ImGui::Dummy({ 20,20 });
+
+        ImGui::PopItemWidth();
+        ImGui::PopStyleColor();
+
+        ImGui::Dummy({ 10,10 });
+
+
+        ImGui::TableNextColumn();
+        INDENT_NEXT
+            if (ImGuiKnobs::Knob(("Out Gain##" + to_string(ID)).c_str(), &outputGainDB, -36, 24, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+        ifDoubleClicked{ (outputGainDB = 0.0f); isChanged = true; }
+
+        ImGui::SameLine();
+        INDENT_NEXT
+            if (ImGuiKnobs::Knob(("Dry/Wet##" + to_string(ID)).c_str(), &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+
+        ImGui::TableNextColumn();
+
+        INDENT_NEXT
+        guiMtx.lock();
+        tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+        guiMtx.unlock();
+
+        ImGui::EndTable();
+    }
+
+    if (isChanged)
+        parameterChanged.store(true);
+}
+
+void ChannelUtility::renderInterface(float nodeW) {}

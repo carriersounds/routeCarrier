@@ -15,32 +15,32 @@ This program is built around a node editor where audio devices can be connected 
 
 - Runs on Windows
 - Based on DirectX11 / Win32 implementation of ImGui
-- No external dependencies needed to run
 - Currently only supports WASAPI driver
 
 ## Features
 
 - Can stream to/from multiple hardware audio inputs/outputs simultaneously, represented as i/o nodes
-- Routing is done via a visual node-based graph system, not limited by menus or buttons
+- Asynchronous samplerate conversion thanks to [libsamplerate](https://github.com/libsndfile/libsamplerate)
+- Routing is done via a visual node-based graph system
 - Audio effects as nodes for processing within the graph (VST support coming soon, hopefully)
 - Click or drag & drop a node from the toolbar to add it to the graph, and connect pins accordingly (hint, hit F on the graph to zoom to your nodes)
 
 ## Build & Dependencies
 - Compiled using Visual Studio 2022
-- The VS project expects the library modules for the [JUCE API](https://github.com/juce-framework/JUCE) to be located at `..\..\..\Libraries\JUCE\modules`. Change this to where ever you have copied the repo to.
-- Apart from that, no other change should be needed within Visual Studio. Build from there
-- Source files for [ImGui](https://github.com/ocornut/imgui), [ImPlot](https://github.com/epezent/implot), [ImGui Node Editor](https://github.com/thedmd/imgui-node-editor) and [ImGui Knobs](https://github.com/altschuler/imgui-knobs) are all integrated in the `source/imgui` directory and referenced locally.
+- Modules for [JUCE](https://github.com/juce-framework/JUCE) are included as a submodule. You only need the files at `source\external\JUCE\modules` for this build.
+- Other compiled libraries expected in `source\external` are [libsamplerate](https://github.com/libsndfile/libsamplerate/releases/tag/0.2.2) & soon to come fftw3.
+- `libsamplerate.dll` and `libfftw3-3.dll` need to be in the same folder as the compiled binary
+- Source files for [ImGui](https://github.com/ocornut/imgui), [ImPlot](https://github.com/epezent/implot), [ImGui Node Editor](https://github.com/thedmd/imgui-node-editor) and [ImGui Knobs](https://github.com/altschuler/imgui-knobs) are all integrated in the `source/imgui` directory and referenced locally. Also because some elements of these libraries have been modified.
 
 
 ## Current State
-- Very barebones DSP blocks and toolbar
-- Not a lot of metadata so Windows will probably still flag the app
-- Samplerate conversion is not dynamic yet, so de-sync and crackling will probably creep in over time. This is a big feature and it will take time to flush out properly.
+- Basic DSP blocks and toolbar (EQ, compressor, reverb, saturation etc)
+- Not a lot of street cred so Windows will probably still flag the app
 
 Other WIP features which are planned be implemented in the future
 
 - Saving and loading presets 
-- More utility fx: Graphic EQ, Dynamics, Multiband, Channel strips, etc..
+- More utility fx: Multiband, stereo control, auto-gain, Channel strips, etc..
 - Soundboard - file input
 - Recorder - file output
 - Multichannel device support (3+ channels per device), currently it forces 2 channels per device

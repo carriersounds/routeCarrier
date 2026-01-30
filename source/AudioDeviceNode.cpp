@@ -4,7 +4,7 @@
 DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID)
         : hardwareFIFO(FIFOSIZE),
         hardwareBuffer(2, FIFOSIZE),
-        srcWorkBuffer(2,1024),
+        srcBuffer(2,1024),
         AudioNode(blocktype,initDeviceName,nodeID),
         devicePointer(nullptr),
         trigger(nullptr),
@@ -60,7 +60,6 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
 
     ImGui::Dummy(ImVec2(0, 6));
-    //ImGuiKnobs::Knob(("strength\n" + getBlockName()).c_str(), &recoverStrength, 0.0000000001, 1, 0, "%.8f", 1, 0, ImGuiKnobFlags_Logarithmic);
 
     if (isInput()){
 
@@ -209,14 +208,13 @@ int DeviceNode::writeToFifoFrom(const float* const* input, int numSamples) {
     return size1 + size2;
 }
 
-int DeviceNode::readFromFifoTo(float* const* output, int numSamples, bool performSRC)
+int DeviceNode::readFromFifoTo(float* const* output, int numSamples)
 {
     int start1, size1, start2, size2;   
-
     fillCountBuf[next_fillCountIndex()] = hardwareFIFO.getNumReady();
 
-    // Handle non-SRC variant
-    if (!performSRC || isMainOutput()) {
+    // Handle non-SRC path
+    if (isMainOutput()) {
        
         hardwareFIFO.prepareToRead(numSamples, start1, size1, start2, size2);
 
@@ -236,15 +234,13 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples, bool perfor
         return size1 + size2;
     }
 
-    
     // Update PID / Ratio
     double diff = getAvgFill() - 1024.0;
 
-    diff *= abs(tanh(0.01 * diff));
+    diff *= abs(tanh(0.1 * diff));
     SRC_ratio = SRC_base - (recoverStrength * diff);
     SRC_ratio = juce::jlimit(SRC_base*0.95, SRC_base*1.05, SRC_ratio);      // should not hit, more for safety
     
-
     // Calculate how many input samples we need to guarantee 'numSamples' out
     // add a small safety margin so the resampler doesn't run dry.
     int inputNeeded = (int)std::ceil(numSamples / SRC_ratio) + 10;
@@ -252,24 +248,24 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples, bool perfor
 
     // Copy from ring buffer to contiguous planar work buffer
     for (int ch = 0; ch < numChannels; ++ch) {
-        if (size1 > 0) srcWorkBuffer.copyFrom(ch, 0, hardwareBuffer, ch, start1, size1);
-        if (size2 > 0) srcWorkBuffer.copyFrom(ch, size1, hardwareBuffer, ch, start2, size2);
+        if (size1 > 0) srcBuffer.copyFrom(ch, 0, hardwareBuffer, ch, start1, size1);
+        if (size2 > 0) srcBuffer.copyFrom(ch, size1, hardwareBuffer, ch, start2, size2);
     }
 
     // need a flat float array for interleaved input and output
-    std::vector<float> interleavedIn(srcWorkBuffer.getNumSamples() * numChannels);
+    std::vector<float> interleavedIn(srcBuffer.getNumSamples() * numChannels);          // try to pre-allocate this, NO MEMORY ALLOCATION IN AUDIO THREAD
     std::vector<float> interleavedOut(numSamples * numChannels);
 
     // Planar -> Interleaved
-    for (int s = 0; s < srcWorkBuffer.getNumSamples(); ++s) {
+    for (int s = 0; s < srcBuffer.getNumSamples(); ++s) {
         for (int ch = 0; ch < numChannels; ++ch) {
-            interleavedIn[s * numChannels + ch] = srcWorkBuffer.getSample(ch, s);
+            interleavedIn[s * numChannels + ch] = srcBuffer.getSample(ch, s);
         }
     }
 
     SRC_DATA data;
     data.data_in = interleavedIn.data();
-    data.input_frames = srcWorkBuffer.getNumSamples();
+    data.input_frames = srcBuffer.getNumSamples();
     data.data_out = interleavedOut.data();
     data.output_frames = numSamples; // We want exactly this many out
     data.src_ratio = SRC_ratio;
@@ -300,11 +296,10 @@ void DeviceNode::prepareOutput() {
     outputBuffer.clear();
 
     if (m_blockType == BlockType::InputDevice) {       
-        readFromFifoTo(outputBuffer.getArrayOfWritePointers(), BLOCKSIZE, true);
+        readFromFifoTo(outputBuffer.getArrayOfWritePointers(), BLOCKSIZE);
         outputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB));          
     }
     else if (m_blockType == BlockType::OutputDevice) {
-
         inputBuffer.applyGain(tools::decibelsToGain(deviceGain_dB));
         copyBuffer(&outputBuffer, &inputBuffer);    
         writeToFifoFrom(inputBuffer.getArrayOfReadPointers(), BLOCKSIZE);
@@ -333,7 +328,7 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
         GUIbuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
 
         hardwareBuffer.setSize(numChannels, FIFOSIZE, false, true, true);    
-        srcWorkBuffer.setSize(numChannels, FIFOSIZE, false, true, true);
+        srcBuffer.setSize(numChannels, FIFOSIZE, false, true, true);
 
 
         src_reset(sampleRateConverter);
@@ -372,12 +367,10 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
     }
 
     if (m_blockType == BlockType::OutputDevice) {
-
         const float* data = this->hardwareBuffer.getReadPointer(0);
         int samplesRead = readFromFifoTo(outputChannelData, numSamples);
         if (samplesRead < numSamples)
         {
-
             // Underrun → zero remaining output
             for (int ch = 0; ch < numOutputChannels; ++ch)      // only triggered once i believe, at the start?
             {
@@ -387,7 +380,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
             }
         }
 
-       if(trigger != nullptr && hardwareFIFO.getNumReady() < BLOCKSIZE)
+       if(trigger != nullptr && hardwareFIFO.getNumReady() < BLOCKSIZE << 1)        // also aim at 1024
         trigger->signal();                                                  
 
     }

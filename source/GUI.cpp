@@ -609,7 +609,7 @@ void GUI::renderToolbar() {
     static bool showOldFX = false;
 
 
-    ImGui::SeparatorText("Audio Processing");
+    ImGui::SeparatorText("Audio Effects");
     ImGui::Dummy({ 5,5 });
 
     if (ImGui::Button("Channel Utility")) prog->audio.addNewDSPNode(EffectType::ChannelUtil);

@@ -206,18 +206,17 @@ void Equalizer::renderInterface(float nodeW) {
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, { 10,0 });
     ImGui::PushStyleColor(ImGuiCol_FrameBg, { 0,0,0,0 });
 
-    if (ImGui::BeginTable("eq", 2, ImGuiTableFlags_Resizable, ImVec2(670,200))){
+    if (ImGui::BeginTable(ADD_ID("eq##"), 2, ImGuiTableFlags_Resizable, ImVec2(670,200))){
 
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
 
         bool changed = false;
-        static int lastClicked = 0;
 
-        if (ImPlot::BeginPlot("EQ GRAF", { 500,200 }, ImPlotFlags_CanvasOnly | ImPlotFlags_NoTitle)) {
+        if (ImPlot::BeginPlot(ADD_ID("EQ GRAF##"), { 500,200 }, ImPlotFlags_CanvasOnly | ImPlotFlags_NoTitle)) {
 
             ImPlot::SetupAxisLimits(ImAxis_X1, 20, 20000, ImGuiCond_Always);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, -12, 12, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -1 * plotRangeY, plotRangeY, ImGuiCond_Always);
             ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
             ImPlot::SetupAxis(ImAxis_X1, "Frequency", ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels);
             ImPlot::SetupAxis(ImAxis_Y1, "Gain", ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels);
@@ -239,8 +238,7 @@ void Equalizer::renderInterface(float nodeW) {
                 bool clicked = false;
                 bool dragged = false;
 
-                // make ID space for up to 16 points
-
+                // make ID space for up to 16 points ( ID << 4)
                 if (bandInterface[i].typeToCtrl == FilterType::lowShelf || bandInterface[i].typeToCtrl == FilterType::highShelf || bandInterface[i].typeToCtrl == FilterType::peak) {
 
                     if (ImPlot::DragPoint((ID << 4) + i, &band.freq, &band.gainDB, ImVec4(0.9f, 0.6f, 0.0f, 1.0f), 7.0f, 0, &clicked, &hov)) {
@@ -257,7 +255,12 @@ void Equalizer::renderInterface(float nodeW) {
 
                 }
                 else {
-                    if (ImPlot::DragPoint((ID << 4) + i, &band.freq, &band.Q, ImVec4(0.9f, 0.6f, 0.0f, 1.0f), 7.0f, 0, &clicked, &hov)) {
+                  
+                    fakeQ = 3 * log(2 * band.Q);    // convert for GUI
+                    if (ImPlot::DragPoint((ID << 4) + i, &band.freq, &fakeQ, ImVec4(0.9f, 0.6f, 0.0f, 1.0f), 7.0f, 0, &clicked, &hov)) {
+
+                        fakeQ = juce::jlimit(-12.0, 12.0, fakeQ);
+                        band.Q = 0.5 * exp(0.333 * fakeQ);
                         dragged = true;
                         changed = true;
                     }
@@ -265,7 +268,7 @@ void Equalizer::renderInterface(float nodeW) {
                     ImGui::PushFont(NULL, 12.0f);
                     ImPlot::PushStyleColor(ImPlotCol_InlayText, ImVec4(0, 0, 0, 1));
 
-                    ImPlot::PlotText(to_string(i).c_str(), band.freq, band.Q);
+                    ImPlot::PlotText(to_string(i).c_str(), band.freq, fakeQ);
                     ImPlot::PopStyleColor();
                     ImGui::PopFont();
                 }
@@ -279,10 +282,9 @@ void Equalizer::renderInterface(float nodeW) {
                     changed = true;
                 }
 
-                band.Q = std::clamp(band.Q, 0.01, 20.0);
+                band.Q = std::clamp(band.Q, 0.01, 50.0);
                 band.freq = std::clamp(band.freq, 10.0, 20000.0);
-                band.gainDB = std::clamp(band.gainDB, -99.0, 60.0);
-
+                band.gainDB = std::clamp(band.gainDB, -30.0, 30.0);
             }
 
             ImPlot::EndPlot();      // fix Q slider!!!
@@ -296,6 +298,17 @@ void Equalizer::renderInterface(float nodeW) {
 
         bool lastEnabled = bandInterface[lastClicked].enabled;
         int lastType = (int)bandInterface[lastClicked].typeToCtrl;
+
+
+
+        plotRangeY = 12;
+
+        for (auto& ee : bandInterface) {
+            plotRangeY = std::max(abs(ee.gainDB), (double)plotRangeY);
+        }
+        
+        plotRangeY = std::max((double)plotRangeY, abs(fakeQ));
+
 
         ImGui::PushItemWidth(100);
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.11f, 0.23f, 0.34f, 1.0f));
@@ -318,10 +331,9 @@ void Equalizer::renderInterface(float nodeW) {
         }
 
         if (lastType == (int)FilterType::lowShelf || lastType == (int)FilterType::highShelf || lastType == (int)FilterType::peak) {
-            if (ImGui::SliderFloat(("Gain##" + to_string(ID)).c_str(), &lastG, -15.0f, 15.0f, "%.2f")) {
+            if (ImGui::SliderFloat(("Gain##" + to_string(ID)).c_str(), &lastG, -30.0f, 30.0f, "%.2f")) {
                 bandInterface[lastClicked].gainDB = (double)lastG;
-                changed = true;
-               
+                changed = true;          
             }
             ifDoubleClicked{bandInterface[lastClicked].gainDB = 0.0; changed = true; }
         }
@@ -329,7 +341,7 @@ void Equalizer::renderInterface(float nodeW) {
             ImGui::Dummy({20,23});
         }
 
-        if (ImGui::SliderFloat(("Q##" + to_string(ID)).c_str(), &lastQ, 0.01, 15.0f, "%.2f", ImGuiSliderFlags_Logarithmic)) {
+        if (ImGui::SliderFloat(("Q##" + to_string(ID)).c_str(), &lastQ, 0.01, 30.0f, "%.2f", ImGuiSliderFlags_Logarithmic)) {
             bandInterface[lastClicked].Q = (double)lastQ;
             changed = true;
         }

@@ -5,14 +5,14 @@
 #include "AudioDSPNode.h"
 
 enum class FilterType {
-    lowPass,
     highPass,
-    bandPass,
     lowShelf,
-    highShelf,
-    notch,
     peak,
-    allpass
+    bandPass,
+    notch,
+    allpass,
+    highShelf,
+    lowPass,
 };
 enum class DistortionType {
     softclip,
@@ -122,14 +122,15 @@ private:
     };
 
     string FilterTypeString[8] = {
-        "LowPass",
         "HighPass",
-        "BandPass",
         "Low Shelf",
-        "High Shelf",
-        "Notch",
         "Peak",
-        "Allpass"};
+        "BandPass",
+        "Notch",
+        "Allpass",
+        "High Shelf",    
+        "LowPass"
+    };
 
     juce::dsp::DryWetMixer<float> drywet;
     int bandCount = 4;
@@ -137,6 +138,9 @@ private:
 
     vector<JuceFilter> chainVec;
     vector<EQbandSetting<float>> bandSettings;
+    double fakeQ;
+    int lastClicked = 0;
+    float plotRangeY = 12;
     vector<EQbandSetting<double>> bandInterface;
 
     float getChainMagnitude(const vector<JuceFilter>& chain, float freq, float sampleRate)

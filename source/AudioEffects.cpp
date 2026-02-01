@@ -147,7 +147,58 @@ void Compressor::processDSP(juce::dsp::AudioBlock<float>& block) {
 
 }
 
-void ChannelUtility::processDSP(juce::dsp::AudioBlock<float>& block){}
+void ChannelUtility::processDSP(juce::dsp::AudioBlock<float>& block){
+
+
+    if (parameterChanged.load()) {
+        gain.setGainDecibels(gainValueDB);
+        pan.setPan(panValue);
+   
+        midside.setPan(midSide);
+        parameterChanged.store(false);
+    }
+
+    gain.process(juce::dsp::ProcessContextReplacing<float>(block));
+    pan.process(juce::dsp::ProcessContextReplacing<float>(block));
+
+
+    midSideBuffer.clear();
+
+    // M = L + R 
+    juce::FloatVectorOperations::add(midSideBuffer.getWritePointer(0), outputBuffer.getReadPointer(0), outputBuffer.getReadPointer(1), BLOCKSIZE);
+
+    // S = L - R 
+    juce::FloatVectorOperations::subtract(midSideBuffer.getWritePointer(1), outputBuffer.getReadPointer(0), outputBuffer.getReadPointer(1), BLOCKSIZE);
+    
+    outputBuffer.clear();
+    if (!mono) {
+        juce::dsp::AudioBlock<float> midsideBlock(midSideBuffer);
+        midside.process(juce::dsp::ProcessContextReplacing<float>(midsideBlock));
+
+        // L = M + S
+        juce::FloatVectorOperations::addWithMultiply(outputBuffer.getWritePointer(0), midSideBuffer.getReadPointer(0), 1.0f, BLOCKSIZE);
+        juce::FloatVectorOperations::addWithMultiply(outputBuffer.getWritePointer(0), midSideBuffer.getReadPointer(1), 1.0f, BLOCKSIZE);
+
+        // R = M - S
+        juce::FloatVectorOperations::addWithMultiply(outputBuffer.getWritePointer(1), midSideBuffer.getReadPointer(0), 1.0f, BLOCKSIZE);
+        juce::FloatVectorOperations::subtract(outputBuffer.getWritePointer(1), midSideBuffer.getReadPointer(1), BLOCKSIZE);
+
+    }
+    else {
+        // (L,R) = M
+        juce::FloatVectorOperations::addWithMultiply(outputBuffer.getWritePointer(0), midSideBuffer.getReadPointer(0), 1.0f, BLOCKSIZE);
+        juce::FloatVectorOperations::addWithMultiply(outputBuffer.getWritePointer(1), midSideBuffer.getReadPointer(0), 1.0f, BLOCKSIZE);
+    }
+   
+    if (invertLeft) {
+        juce::FloatVectorOperations::multiply(outputBuffer.getWritePointer(0),-1.0f, BLOCKSIZE);
+    }
+
+    if (invertRight) {
+        juce::FloatVectorOperations::multiply(outputBuffer.getWritePointer(1), -1.0f, BLOCKSIZE);
+    }
+
+}
 
 //========= GRAPHICAL INTERFACE ===========
 void Equalizer::renderInterface(float nodeW) {
@@ -327,7 +378,7 @@ void Filter::renderInterface(float nodeW) {
     INDENT_NEXT
 
     guiMtx.lock();
-    tools::drawGainMonitorVertic(GUIbuffer, 120, ID);
+    tools::drawGainMonitorVertic_Stereo(GUIbuffer, 120, ID);
     guiMtx.unlock();
     ImGui::NewLine();
 
@@ -361,7 +412,7 @@ void Gain::renderInterface(float nodeW) {
     ImGui::SameLine();
 
     guiMtx.lock();
-    tools::drawGainMonitorVertic(GUIbuffer, nodeW, ID);
+    tools::drawGainMonitorVertic_Stereo(GUIbuffer, nodeW, ID);
     guiMtx.unlock();
 
     ImGui::NewLine(); // spacing
@@ -441,7 +492,7 @@ void Saturator::renderInterface(float nodeW) {
         
         INDENT_NEXT
         guiMtx.lock();
-        tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+        tools::drawGainMonitorVertic_Stereo(GUIbuffer, 140, ID);
         guiMtx.unlock();
 
         ImGui::EndTable();
@@ -492,8 +543,6 @@ void Compressor::renderInterface(float nodeW) {
             isChanged = true;
         }
 
-        ImGui::Dummy({ 20,20 });
-
         ImGui::PopItemWidth();
         ImGui::PopStyleColor();
 
@@ -513,16 +562,70 @@ void Compressor::renderInterface(float nodeW) {
 
         INDENT_NEXT
         guiMtx.lock();
-        tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+        tools::drawGainMonitorVertic_Stereo(GUIbuffer, 140, ID);
         guiMtx.unlock();
 
         ImGui::EndTable();
     }
 
-    
-
     if (isChanged)
         parameterChanged.store(true);
 }
 
-void ChannelUtility::renderInterface(float nodeW) {}
+void ChannelUtility::renderInterface(float nodeW) {
+
+    if (ImGui::BeginTable(ADD_ID("tab"), 2, ImGuiTableFlags_SizingFixedFit, { 230, 200 })) {
+
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+
+        INDENT_NEXT
+
+        if (ImGuiKnobs::Knob(ADD_ID("Gain##"), &gainValueDB, -60, 60, 0.2f, "%.1f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+        ifDoubleClicked(gainValueDB = 0);
+        ImGui::SameLine();
+
+        if (MidSideModeGUI) {
+            if (ImGuiKnobs::Knob(ADD_ID("M/S##"), &midSide, -1, 1, 0.002f, "%.2f", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+            ifDoubleClicked(midSide = 0);
+        }
+        else {
+            if (ImGuiKnobs::Knob(ADD_ID("L/R Pan##"), &panValue, -1, 1, 0.002f, "%.2f", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+            ifDoubleClicked(panValue = 0);
+        }
+        ImGui::SameLine(); ImGui::Dummy({ 5, 10 });
+
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 10,3 });
+
+        ImGui::Dummy({ 7, 7 });
+        tools::ImShiftCursor(37, 0);
+        tools::toggleButton(ADD_ID("M/S Mode##"), MidSideModeGUI);
+
+
+       tools::ImShiftCursor(53, 0);
+        if(tools::toggleButton(ADD_ID("Mono##"), mono))parameterChanged.store(true);
+ 
+        ImGui::Dummy({ 7, 7 });
+
+        tools::ImShiftCursor(26, 0);
+        tools::toggleButton(ADD_ID("inv L##"), invertLeft);
+        ImGui::SameLine(0,10);
+        tools::toggleButton(ADD_ID("inv R##"), invertRight);
+
+        ImGui::PopStyleVar();
+      
+
+        ImGui::TableNextColumn();
+
+        guiMtx.lock();
+        tools::drawGainMonitorVertic_Stereo(GUIbuffer, nodeW, ID, 30);
+        guiMtx.unlock();
+
+
+        ImGui::EndTable();
+    }
+
+     // spacing
+
+}

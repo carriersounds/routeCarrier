@@ -14,6 +14,8 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 
     // ============== TITLE ============== 
     startPos = ImGui::GetCursorPos();
+
+    
     ImGui::Text(getBlockName().c_str());
     ImGui::SameLine(); 
     ImGui::Dummy({ 120,5 });
@@ -29,7 +31,6 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
         renderInterface(w);
     }
         
-
     // ============== INPUT PIN ============== 
     const char* labelin = "    IN";
     ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);

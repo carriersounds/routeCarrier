@@ -43,7 +43,9 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     // ============== TITLE CARD ==============
     startPos = ImGui::GetCursorPos();
     node::BeginNode(ID);
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 150);
     ImGui::Text(getBlockName().c_str()); 
+    ImGui::PopTextWrapPos();
     ImVec2 p = ImGui::GetCursorScreenPos();
 
     ImGui::SameLine(0,50);
@@ -75,7 +77,6 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
     ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
 
-
     ImGui::Dummy(ImVec2(0, 6));
 
     // beginpin is inside
@@ -83,7 +84,12 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
 
         if (showInterface) {
             guiMtx.lock();
-            tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+
+            if (numChannels > 1)
+                tools::drawGainMonitorVertic_Stereo(GUIbuffer, 140, ID);
+            else
+                tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+
             guiMtx.unlock();
             ImGui::SameLine();
             INDENT_NEXT
@@ -125,7 +131,12 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
             ImGui::PopID();
             ImGui::SameLine(0, 30);
             guiMtx.lock();
-            tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+
+            if(numChannels > 1)
+                tools::drawGainMonitorVertic_Stereo(GUIbuffer, 140, ID);
+            else
+                tools::drawGainMonitorVertic(GUIbuffer, 140, ID);
+
             guiMtx.unlock();
 
         }
@@ -344,8 +355,6 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
 
         hardwareBuffer.setSize(numChannels, FIFOSIZE, false, true, true);    
         srcBuffer.setSize(numChannels, FIFOSIZE, false, true, true);
-
-
         src_reset(sampleRateConverter);
         sampleRateConverter = src_new(SRC_LINEAR, numChannels, &err4src);
 

@@ -65,13 +65,29 @@ typedef size_t ParamID;
 using std::unique_ptr;
 using std::make_unique;
 
+enum class DragDropBlock {
+    None,
+    Device,
+    Filter,
+    Gain,
+    Reverb,
+    EQ,
+    Saturator,
+    ChannelUtil,
+    Compressor
+};
+
+
 namespace tools {
 
     inline void ImShiftCursor(float x, float y) {
         ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(x, y));
     }
 
-    inline void toggleButton(const char* label, bool& var, const ImVec2& size = ImVec2(0, 0)) {
+    // returns 1 on both toggles
+    inline bool toggleButton(const char* label, bool& var, const ImVec2& size = ImVec2(0, 0)) {
+
+        bool clicked = false;
 
         if (var) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.75f, 0.95f, 1.0f));
@@ -79,6 +95,7 @@ namespace tools {
         }
 
         if (ImGui::Button(label, size)) {
+            clicked = true;
             var = !var;
             if (!var) ImGui::PopStyleColor(2);
         }
@@ -86,8 +103,17 @@ namespace tools {
             if (var) ImGui::PopStyleColor(2);
         }
 
+        return clicked;
     }
 
+    inline void ImDragDropMacro(DragDropBlock& toSet, DragDropBlock type) {
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
+        {
+            toSet = type;
+            ImGui::SetDragDropPayload("DND_DEMO_CELL", &toSet, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+            ImGui::EndDragDropSource();
+        }
+    }
 
     template <typename T>
     void RemoveObjectFromVector(std::vector<T>& vec, const T& value)
@@ -163,12 +189,12 @@ namespace tools {
         ImPlot::PopStyleVar();
     }
 
-    inline void drawGainMonitorVertic(juce::AudioBuffer<float>& buffer, float drawLength, NodeID xtraID) {
+    inline void drawGainMonitorVertic(juce::AudioBuffer<float>& buffer, float drawLength, NodeID xtraID, float thick = 60, int channel = 0) {
 
         if (drawLength < 10) return;    // might glitch on the 1st frame
 
-        float rmsDB = tools::gainToDecibels(buffer.getRMSLevel(0, 0, BLOCKSIZE));
-        float peakDB = tools::gainToDecibels(buffer.getMagnitude(0, 0, BLOCKSIZE));
+        float rmsDB = tools::gainToDecibels(buffer.getRMSLevel(channel, 0, BLOCKSIZE));
+        float peakDB = tools::gainToDecibels(buffer.getMagnitude(channel, 0, BLOCKSIZE));
         float lowerLimit = 60;
 
         if (rmsDB > 12 || peakDB > 12) {
@@ -180,7 +206,7 @@ namespace tools {
 
         string lvlID = "lv" + to_string(xtraID);
 
-        if (ImPlot::BeginPlot(lvlID.c_str(), ImVec2(60, drawLength), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
+        if (ImPlot::BeginPlot(lvlID.c_str(), ImVec2(thick, drawLength), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
 
             // Calculate the height of each segment (NOT POSITION!). position is calculated from 0 i suppose
             float dataBr[3] = {peakDB,rmsDB - peakDB, -(lowerLimit + rmsDB) };
@@ -191,6 +217,52 @@ namespace tools {
 
             ImPlot::PushColormap("gain");
             ImPlot::PlotBarGroups(labels, dataBr, 3, 1, 1.0f, 2.0f, ImPlotBarGroupsFlags_Stacked);
+            ImPlot::PopColormap();
+
+            ImPlot::EndPlot();
+        }
+
+        ImGui::PopStyleColor();
+        ImPlot::PopStyleVar();
+    }
+
+    inline void drawGainMonitorVertic_Stereo(juce::AudioBuffer<float>& buffer, float drawLength, NodeID ID, float thick = 30, bool isStereo = true) {
+
+        if (drawLength < 10) return;    // might glitch on the 1st frame
+        float lowerLimit = 60;
+        
+
+        float rmsDBL = tools::gainToDecibels(buffer.getRMSLevel(0, 0, BLOCKSIZE));
+        float peakDBL = tools::gainToDecibels(buffer.getMagnitude(0, 0, BLOCKSIZE));
+
+        float rmsDBR = tools::gainToDecibels(buffer.getRMSLevel(isStereo, 0, BLOCKSIZE));
+        float peakDBR = tools::gainToDecibels(buffer.getMagnitude(isStereo, 0, BLOCKSIZE));
+
+
+        if (rmsDBL > 12 || peakDBL > 12) {
+            rmsDBL = -lowerLimit; peakDBL = -lowerLimit;
+        }
+
+        if (rmsDBR > 12 || peakDBR > 12) {
+            rmsDBR = -lowerLimit; peakDBR = -lowerLimit;
+        }
+
+        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, { 0,10 });
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, { 0,0,0,0 });
+
+        if (ImPlot::BeginPlot(ADD_ID("lv"), ImVec2(2 * thick, drawLength), ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
+
+            // Calculate the height of each segment (NOT POSITION!). position is calculated from 0 i suppose
+            float dataL[3] = { peakDBL,rmsDBL - peakDBL, -(lowerLimit + rmsDBL) };
+            float dataR[3] = { peakDBR,rmsDBR - peakDBR, -(lowerLimit + rmsDBR) };
+
+            const char* labels[] = { "Min", "med1", "med2" };
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -lowerLimit, 0);
+            ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoTickMarks);
+
+            ImPlot::PushColormap("gain");
+            ImPlot::PlotBarGroups(labels, dataL, 3, 1, 0.5f, 0.0f, ImPlotBarGroupsFlags_Stacked);
+            ImPlot::PlotBarGroups(labels, dataR, 3, 1, 0.5f, 0.7f, ImPlotBarGroupsFlags_Stacked);
             ImPlot::PopColormap();
 
             ImPlot::EndPlot();
@@ -404,17 +476,6 @@ namespace tools {
     }
 }
 
-enum class DragDropBlock {
-    None,
-    Device,
-    Filter,
-    Gain,
-    Reverb,
-    EQ,
-    Saturator,
-    ChannelUtil,
-    Compressor
-};
 
 enum class EffectType {
     None,

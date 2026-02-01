@@ -40,7 +40,7 @@ This program is built around a node editor where audio devices can be connected 
 Other WIP features which are planned be implemented in the future
 
 - Saving and loading presets 
-- More utility fx: Multiband, stereo control, auto-gain, Channel strips, etc..
+- More utility fx: Multiband, auto-gain, color fx, etc..
 - Soundboard - file input
 - Recorder - file output
 - Multichannel device support (3+ channels per device), currently it forces 2 channels per device

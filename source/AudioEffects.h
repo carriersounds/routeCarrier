@@ -36,7 +36,7 @@ public:
        {
 
         drywet.setWetLatency(0.0f);
-        drywet.setMixingRule(juce::dsp::DryWetMixingRule::sin3dB);
+        drywet.setMixingRule(juce::dsp::DryWetMixingRule::squareRoot3dB);
         drywet.setWetMixProportion(1.0f);
         dryWetMix = 1.0f;
 
@@ -269,7 +269,7 @@ public:
  
         // set distortion type
         drywet.setWetLatency(0.0f);
-        drywet.setMixingRule(juce::dsp::DryWetMixingRule::sin3dB);
+        drywet.setMixingRule(juce::dsp::DryWetMixingRule::squareRoot3dB);
 
         saturator.get<0>().setGainDecibels(inputGainDB);
         setType(DistortionType::softclip);
@@ -396,6 +396,8 @@ public:
         ratio = 4.0f;
         threshold = -12.0f;
 
+        drywet.setMixingRule(juce::dsp::DryWetMixingRule::squareRoot3dB);
+
         compressor.get<0>().setAttack(attack);
         compressor.get<0>().setRelease(release);
         compressor.get<0>().setThreshold(threshold);
@@ -430,7 +432,13 @@ class ChannelUtility final : public DSPNode
 {
 public:
     ChannelUtility(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : DSPNode(blocktype, initDeviceName, nodeID), gainValueDB(0.0f) {
+        
+        midSideBuffer.setSize(2, BLOCKSIZE);
         gain.setGainDecibels(gainValueDB);
+        pan.setPan(panValue);
+        pan.setRule(juce::dsp::PannerRule::balanced);
+        midside.setPan(midSide);
+        midside.setRule(juce::dsp::PannerRule::balanced);
     }
 
     float gainValueDB;
@@ -439,12 +447,30 @@ protected:
     void renderInterface(float nodeW) override;
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
     EffectType getType() { return EffectType::Gain; }
-    void prepareDSP(const juce::dsp::ProcessSpec & spec) override { gain.reset(); gain.prepare(spec); }
+    void prepareDSP(const juce::dsp::ProcessSpec & spec) override { 
+        midside.reset();
+        pan.reset();
+        midside.prepare(spec);
+        pan.prepare(spec);
+        gain.reset(); 
+        gain.prepare(spec);
+    }
 
 
 private:
         JuceGain gain;
-    
+        bool mono = false;
+        bool invertLeft = false;
+        bool invertRight = false;
+        float panValue = 0;
+        float midSide = 0;
+        bool MidSideModeGUI = false;
+
+        juce::AudioBuffer<float> midSideBuffer;
+
+        juce::dsp::Panner<float> midside;
+        juce::dsp::Panner<float> pan;
+        
 
 };
 

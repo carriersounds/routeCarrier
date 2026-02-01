@@ -606,79 +606,46 @@ void GUI::renderToolbar() {
     */
 
     DragDropBlock dropper = DragDropBlock::None;
+    static bool showOldFX = false;
 
-    ImGui::SeparatorText("Audio Effects");
 
-    if(ImGui::Button("FILTER", { 180,80 }))prog->audio.addNewDSPNode(EffectType::Filter);
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
-    {
-        dropper = DragDropBlock::Filter;
-        // triggers only on 1st button click
-        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
-        ImGui::EndDragDropSource();
+    ImGui::SeparatorText("Audio Processing");
+    ImGui::Dummy({ 5,5 });
 
-    }
+    if (ImGui::Button("Channel Utility")) prog->audio.addNewDSPNode(EffectType::ChannelUtil);
+    tools::ImDragDropMacro(dropper, DragDropBlock::ChannelUtil);
 
     ImGui::SameLine();
-    if(ImGui::Button("GAIN", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Gain);
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
-    {
-        dropper = DragDropBlock::Gain;
-        // triggers only on 1st button click
-        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
-        ImGui::EndDragDropSource();
+    if (ImGui::Button("Graphic EQ")) prog->audio.addNewDSPNode(EffectType::EQ);
+    tools::ImDragDropMacro(dropper, DragDropBlock::EQ);
 
-    }
-      
-    if (ImGui::Button("REVERB", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Reverb);
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
-    {
-        dropper = DragDropBlock::Reverb;
-        // triggers only on 1st button click
-        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
-        ImGui::EndDragDropSource();
-
-    }
+    if (ImGui::Button("Compressor")) prog->audio.addNewDSPNode(EffectType::Compressor);
+    tools::ImDragDropMacro(dropper, DragDropBlock::Compressor);
 
     ImGui::SameLine();
-    if (ImGui::Button("Graphic EQ", { 180,80 })) prog->audio.addNewDSPNode(EffectType::EQ);
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
-    {
-        dropper = DragDropBlock::EQ;
-        // triggers only on 1st button click
-        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
-        ImGui::EndDragDropSource();
+    if (ImGui::Button("Saturator")) prog->audio.addNewDSPNode(EffectType::Saturator);
+    tools::ImDragDropMacro(dropper, DragDropBlock::Saturator);
 
+    if (ImGui::Button("Reverb")) prog->audio.addNewDSPNode(EffectType::Reverb);
+    tools::ImDragDropMacro(dropper, DragDropBlock::Reverb);
+   
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.11f, 0.23f, 0.34f, 0.3f));
+
+    ImGui::Dummy({ 10,2 });
+    ImGui::Separator();
+    ImGui::Dummy({ 5,2 });
+
+
+    tools::toggleButton("Show Old FX", showOldFX);
+
+    if (showOldFX) {
+        if (ImGui::Button("Simple Gain")) prog->audio.addNewDSPNode(EffectType::Gain);
+        tools::ImDragDropMacro(dropper, DragDropBlock::Gain);
+        ImGui::SameLine();
+        if (ImGui::Button("Simple Filter")) prog->audio.addNewDSPNode(EffectType::Filter);
+        tools::ImDragDropMacro(dropper, DragDropBlock::Filter);
     }
-
-    if (ImGui::Button("Saturator", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Saturator);
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
-    {
-        dropper = DragDropBlock::Saturator;
-        // triggers only on 1st button click
-        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
-        ImGui::EndDragDropSource();
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Button("Channel utility", { 180,80 })) prog->audio.addNewDSPNode(EffectType::ChannelUtil);
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
-    {
-        dropper = DragDropBlock::ChannelUtil;
-        // triggers only on 1st button click
-        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
-        ImGui::EndDragDropSource();
-    }
-
-    if (ImGui::Button("Compressor", { 180,80 })) prog->audio.addNewDSPNode(EffectType::Compressor);
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
-    {
-        dropper = DragDropBlock::Compressor;
-        // triggers only on 1st button click
-        ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
-        ImGui::EndDragDropSource();
-    }
-
 
     ImGui::NewLine();
     ImGui::NewLine();
@@ -689,7 +656,6 @@ void GUI::renderToolbar() {
     static juce::StringArray inputs;
     static juce::StringArray outputs;
 
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.11f, 0.23f, 0.34f, 0.3f));
 
     // update audio device list every 2 seconds or on a button press
     if ((ImGui::GetFrameCount() % 120) == 0) {

@@ -5,7 +5,6 @@ DSPNode::DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID
     AudioNode(blocktype, initDeviceName, nodeID),
     numInputs(2),
     numOutputs(2) {
-
 }
 
 void DSPNode::renderAsNode(float pinSize, float spacing) {
@@ -68,7 +67,7 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
     node::EndPin();
 
 
-    // collapse button
+    // collapse & bypass button. location determined after total interface width is known >> node::GetNodeSize(ID)
 
     ImGui::SetCursorPosX(startPos.x + node::GetNodeSize(ID).x - (spacing + preciseOffset - 20));
     ImGui::SetCursorPosY(startPos.y - 3);

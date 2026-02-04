@@ -215,8 +215,7 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
 
     m_PinNodePairs.emplace(pinID, blockID);                 // make the parent node easier to find using a LUT                                                                     
     
-   // if(blockType == BlockType::InputDevice)
-        fifoLevels.emplace(blockID,FifoData());                          // add channel for fifo monitoring (debug)
+   fifoLevels.emplace(blockID,FifoData());                          // add channel for fifo monitoring (debug)
     
     sends.emplace(blockID, vector<NodeID>());
 
@@ -233,7 +232,7 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
     return blockID;
 }
 
-NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect, NodeID presetNodeID) {
+NodeID AudioEngine::addNewDSPNode(BlockType typeOfEffect, NodeID presetNodeID) {
 
     NodeID blockID = getNewID(Identifier::node, presetNodeID);                // get new IDs for node and pins
     PinID inputPinID = getNewID(Identifier::pin);
@@ -243,40 +242,42 @@ NodeID AudioEngine::addNewDSPNode(EffectType typeOfEffect, NodeID presetNodeID) 
 
     switch (typeOfEffect)
     {
-    case EffectType::Filter:
-        nodes.emplace(blockID, make_unique<Filter>(BlockType::DSP, "Filter", blockID));
+    case BlockType::Filter:
+        nodes.emplace(blockID, make_unique<Filter>(BlockType::Filter, "Filter", blockID));
         break;
-    case EffectType::Gain:
-        nodes.emplace(blockID, make_unique<Gain>(BlockType::DSP, "Gain", blockID));
+    case BlockType::Gain:
+        nodes.emplace(blockID, make_unique<Gain>(BlockType::Gain, "Gain", blockID));
         break;
-    case EffectType::Reverb:
-        nodes.emplace(blockID, make_unique<Reverb>(BlockType::DSP, "Reverb", blockID));
+    case BlockType::Reverb:
+        nodes.emplace(blockID, make_unique<Reverb>(BlockType::Reverb, "Reverb", blockID));
         break;
-    case EffectType::EQ:
-        nodes.emplace(blockID, make_unique<Equalizer>(BlockType::DSP, "Graphic Equalizer", blockID));
+    case BlockType::EQ:
+        nodes.emplace(blockID, make_unique<Equalizer>(BlockType::EQ, "Graphic Equalizer", blockID));
         break;
-    case EffectType::Saturator:
-        nodes.emplace(blockID, make_unique<Saturator>(BlockType::DSP, "Saturator", blockID));
+    case BlockType::Saturator:
+        nodes.emplace(blockID, make_unique<Saturator>(BlockType::Saturator, "Saturator", blockID));
         break;
-    case EffectType::ChannelUtil:
-        nodes.emplace(blockID, make_unique<ChannelUtility>(BlockType::DSP, "Channel Utility", blockID));
+    case BlockType::ChannelUtil:
+        nodes.emplace(blockID, make_unique<ChannelUtility>(BlockType::ChannelUtil, "Channel Utility", blockID));
         break;
-    case EffectType::Compressor:
-        nodes.emplace(blockID, make_unique<Compressor>(BlockType::DSP, "Compressor", blockID));
+    case BlockType::Compressor:
+        nodes.emplace(blockID, make_unique<Compressor>(BlockType::Compressor, "Compressor", blockID));
         break;
-    case EffectType::Phaser:
+    case BlockType::Phaser:
        // nodes.emplace(blockID, make_unique<Phaser>(BlockType::DSP, "Saturator", blockID));
         break;
     default:
         break;
     }   
     
+    
+
     sends.emplace(blockID, vector<NodeID>());
 
     DSPNode* dspptr = dynamic_cast<DSPNode*>(nodes.at(blockID).get());
+    Logger::log(("Added " + dspptr->getBlockName()).c_str());
+
     dspptr->prepareToPlay(48000, BLOCKSIZE);                                 // initialize samplerates 
-
-
     nodes.at(blockID)->addPin(inputPinID, pinType::input);                   // assign pins
     nodes.at(blockID)->addPin(outputPinID, pinType::output);
 
@@ -315,13 +316,11 @@ void AudioEngine::deleteNode(NodeID nodeToDelete) {
         m_PinNodePairs.erase(nodePointer->inputPin);
         fifoLevels.erase(nodeToDelete);
         break;
-    case BlockType::DSP:
-        m_PinNodePairs.erase(nodePointer->inputPin);
-        m_PinNodePairs.erase(nodePointer->outputPin);
-        break;
     case BlockType::FileInput:
         break;
     default:
+        m_PinNodePairs.erase(nodePointer->inputPin);
+        m_PinNodePairs.erase(nodePointer->outputPin);
         break;
     }
 
@@ -354,6 +353,7 @@ void AudioEngine::selectMainOutput(NodeID nodeID) {
 
     DeviceNode* devptr;
 
+
     for (auto& [id, device] : nodes) {
         if(devptr = dynamic_cast<DeviceNode*>(device.get()))
         devptr->setAsMainOutput(false);
@@ -362,6 +362,7 @@ void AudioEngine::selectMainOutput(NodeID nodeID) {
     devptr = dynamic_cast<DeviceNode*>(nodes.at(nodeID).get());
     devptr->setAsMainOutput(true);
 
+   // mainOutSampleRate = devptr->sampleRate;
 }
 
 void AudioEngine::clearAll() {

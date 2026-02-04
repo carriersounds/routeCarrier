@@ -2,19 +2,19 @@
 #define AUDIO_NODES
 #include "mainHeader.hpp"
 #include <JuceHeader.h>
-
+#include "FileIO.h"
 
 // base class for any node in the network
 class AudioNode {
 public:
 
-	AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
+	AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID, bool asPreset = false);
 	virtual ~AudioNode() = default;
 	
 	// Main Interface
 	bool isInput() const { return (m_blockType == BlockType::InputDevice); }
 	bool isOutput() const { return (m_blockType == BlockType::OutputDevice); }
-	bool isDSP() const { return (m_blockType == BlockType::DSP); }
+	bool isDSP() const { return ((int)m_blockType > 4); }
 	NodeID getID() const { return ID; }
 	void addPin(PinID pinID, pinType type) {
 		if (type == pinType::input) inputPin = pinID;
@@ -37,8 +37,13 @@ public:
 	bool showInterface = 1;
 	ImVec2 startPos;
 
+	// Presets
+	virtual void saveCurrentState() {}
+	virtual bool loadPreset(NodePreset loaded) { return 0; }
+
 
 	// Data
+	NodePreset currentState;
 	PinID inputPin;
 	PinID outputPin;
 	std::map<NodeID,AudioNode*> nextNodes;
@@ -58,7 +63,6 @@ protected:
 
 	// Decouple gui controls from audio using a single flag. currently only used by dsp, but will add more gui to device nodes as well prolly
 	atomic<bool> parameterChanged = false;
-
 	std::mutex guiMtx;
 	juce::AudioBuffer<float> GUIbuffer;		// for displaying output level. 
 };

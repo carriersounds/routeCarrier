@@ -2,9 +2,11 @@
 #include "mainHeader.hpp"
 #include <commdlg.h>
 
-class Program;
 
-class Preset {
+class Program;
+class AudioNode;
+
+class GlobalPreset {
 
     // nodes
     // links
@@ -16,10 +18,6 @@ class Preset {
 
     // queue preset representation in audioEngine "exportToPresetQueue()"
 
-
-    // no pls just compile but make id creation happen in runtime,
-    // how to set ID without making uniqueID
-    // 
     // what do I need to create? on creation, queue action.. or look at the current mixer state and build that with some algorithm
 
     // parse first, then allocate
@@ -28,10 +26,11 @@ class Preset {
     // node location????
     // order in preset: device nodes first, then dsp nodes, then links, finally... settings 
 
-    // topologically sorted
+    // topologically sorted :
 
+    // node.printCurrentState();
 
-
+    // how 2
 
     //const char* preset = "hw=1004,x,y";
     //const char* preset = "hw=1008,x,y";
@@ -43,11 +42,95 @@ class Preset {
     //const char* prozxt = "lk=1002,pin1,pin2";
     //const char* preset = "lk=1004,pin1,pin2";
     //const char* preset = "lk=1008,pin1,pin2"; // will always sort topologically
-    //
-    //const char* preset = "lastID=1008"; //finally set newID to this, so it is above all loaded things (prevent ID clash)
 
-    // algorithm, keeping original ID's (different ID order would make ID debugging a living hell)
+  //  vector<NodePreset> nodes;       // should already update pinnodepairs on creation
+                                    // 
+  //  vector<BlockLink>& links;
+
+  //  void save() {
+
+ //       string out;
+
+ //       for (auto& node : nodes) {
+  //          out += node.saveCurrentState();
+
+ //       }
+ //   }
+
+    // LOAD:
+    // create node, apply setting, then link
+
+
+    // full state?
+
+    //const char* preset = "lastID=1008"; //finally set newID to this, so it is above all loaded things (prevent ID clash)
 };
+
+class NodePreset {
+public:
+    NodePreset(AudioNode* mast) : master(mast){}
+    // settings for that node:
+
+    int id;
+    int type;
+    float posX;
+    float posY;
+    // Node Type (Device / DSP)
+    // dev=Name ; dsp = type
+
+    AudioNode* master;
+    vector<GUIParam> params;
+    
+    string blockNames[12] = {"Null", "Input", "Output", "FileIn", "FileOut",
+        "Filter","Gain","Reverb","Graphic Equalizer","Saturator","Channel Utility","Compressor"};
+
+    /*
+    // save whole node as 1 big string incl settings
+    void to_json(json& j) {
+        j = {
+            {"id", id},
+            {"type", type},
+            {"x", posX},
+            {"y", posY}
+        };
+
+        json(*params).;
+
+        j["params"] = *master;
+    }
+
+    // dereference all pointers and SET params based on strings
+    void from_json(const json& j) {
+        j.at("id").get_to(id);
+        j.at("type").get_to(type);
+        j.at("x").get_to(posX);
+        j.at("y").get_to(posY);
+        j.at("params").get_to(params);
+    }
+  */  
+    // initial Node Preset (empty) during construction (know which params there are)
+    
+    string saveCurrentState();
+    
+    template<typename T>
+    void defineSetting(const string& settingName, T* setting) {}
+
+    template<>
+    void defineSetting<float>(const string& settingName, float* setting) {
+        params.emplace_back(settingName, setting, ParamType::Float);
+    }
+    template<>
+    void defineSetting<int>(const string& settingName, int* setting) {
+        params.emplace_back(settingName, setting, ParamType::Int);
+    }
+    template<>
+    void defineSetting<bool>(const string& settingName, bool* setting) {
+        params.emplace_back(settingName, setting, ParamType::Bool);
+    }
+
+
+};
+
 
 
 class FileIO {

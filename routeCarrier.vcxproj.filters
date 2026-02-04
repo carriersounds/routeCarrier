@@ -231,5 +231,11 @@
     <ClInclude Include="source\JuceLibraryCode\JuceHeader.h">
       <Filter>Main</Filter>
     </ClInclude>
+    <ClInclude Include="source\external\nlohmann-json\json.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\nlohmann-json\json_fwd.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

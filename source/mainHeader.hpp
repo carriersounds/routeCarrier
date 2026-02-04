@@ -24,17 +24,19 @@
 #include <memory>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui.h"
+#include "imgui.h"                      // modified for extra imvec2 math operators
 #include "imgui_internal.h"
-#include "imgui_impl_dx11.h"
+#include "imgui_impl_dx11.h"            
 #include "imgui_impl_win32.h"
-#include "implot\implot.h"
+#include "implot\implot.h"              // modified to add extra piechart to dial function
 #include "implot\implot_internal.h"
 #include "imgui\node-editor\imgui_node_editor.h"
-#include "imgui-knobs.h"
+#include "imgui-knobs.h"                                                // modified to accept ID## without printing numbers
 #include "external\libsamplerate-0.2.2-win64\include\samplerate.h"
+#include "external\nlohmann-json\json_fwd.hpp"
+#include "external\nlohmann-json\json.hpp"
+#define JUCE_ASIO
 #include <JuceHeader.h>
-
 namespace ed = ax::NodeEditor;
 namespace node = ax::NodeEditor;
 
@@ -44,6 +46,14 @@ namespace node = ax::NodeEditor;
 #define INDENT_NEXT ImGui::Dummy({ 10,10 }); ImGui::SameLine();
 #define ifDoubleClicked if (ImGui::IsItemActive() && ImGui::IsMouseDoubleClicked(0))
 #define ADD_ID(x) ((x + to_string(ID)).c_str())
+#define toggle(x) x = !x
+
+#define tRight ImGui::TableNextColumn()
+#define tDown ImGui::TableNextRow()
+
+
+namespace fs = std::filesystem;
+using namespace std::literals::chrono_literals;
 
 using std::vector;
 using std::string;
@@ -51,34 +61,62 @@ using std::memcpy;
 using std::to_string;
 using std::thread;
 using std::chrono::high_resolution_clock;
-using namespace std::literals::chrono_literals;
 using std::atomic;
-namespace fs = std::filesystem;
-typedef std::chrono::high_resolution_clock::time_point timepoint;
-
-typedef size_t NodeID;
-typedef size_t PinID;
-typedef size_t LinkID;
-typedef size_t BaseID;
-typedef size_t ParamID;
-
 using std::unique_ptr;
 using std::make_unique;
+using nlohmann::json;
 
-enum class DragDropBlock {
-    None,
-    Device,
+using timepoint = std::chrono::high_resolution_clock::time_point ;
+using LinkID = size_t;
+using BaseID = size_t;
+using ParamID = size_t;
+using NodeID = size_t;
+using PinID = size_t;
+
+enum class BlockType {
+    NullDevice,
+    InputDevice,
+    OutputDevice,
+    FileInput,
+    FileOutput,
     Filter,
     Gain,
     Reverb,
     EQ,
     Saturator,
     ChannelUtil,
-    Compressor
+    Compressor,
+    Phaser
+};
+
+enum ParamType {
+    Float,
+    Int,
+    Bool,
+    String
 };
 
 
 namespace tools {
+
+    inline std::string toString(ParamType t) {
+        switch (t) {
+        case ParamType::Float:  return "float";
+        case ParamType::Int:    return "int";
+        case ParamType::Bool:   return "bool";
+        case ParamType::String: return "string";
+        }
+        return {};
+    }
+
+    inline ParamType fromString(const string& s) {
+        if (s == "float")  return ParamType::Float;
+        if (s == "int")    return ParamType::Int;
+        if (s == "bool")   return ParamType::Bool;
+
+        return ParamType::String;
+    }
+
 
     inline void ImShiftCursor(float x, float y) {
         ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(x, y));
@@ -106,11 +144,11 @@ namespace tools {
         return clicked;
     }
 
-    inline void ImDragDropMacro(DragDropBlock& toSet, DragDropBlock type) {
+    inline void ImDragDropMacro(BlockType& toSet, BlockType type) {
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
         {
             toSet = type;
-            ImGui::SetDragDropPayload("DND_DEMO_CELL", &toSet, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+            ImGui::SetDragDropPayload("DND_DEMO_CELL", &toSet, sizeof(BlockType)); // Set payload to carry the index of our item (could be anything)
             ImGui::EndDragDropSource();
         }
     }
@@ -476,25 +514,72 @@ namespace tools {
     }
 }
 
+struct GUIParam {
+    GUIParam(const string& name, void* ptr, ParamType type) :
+        name(name), paramPtr(ptr), type(type) {
+    }
 
-enum class EffectType {
-    None,
-    Filter,
-    Phaser,
-    Gain,
-    Reverb,
-    EQ,
-    Saturator,
-    ChannelUtil,
-    Compressor
-};
+    string name;
+    void* paramPtr;
+    ParamType type;
 
-enum class BlockType {
-    NullDevice,
-    InputDevice,
-    OutputDevice,
-    DSP,
-    FileInput
+    // dereference and save to string
+    string saveParamValue() {
+        switch (type)
+        {
+        case ParamType::Float: {
+            float* cast = (float*)paramPtr;
+            return to_string(*cast);
+        }
+                        break;
+        case ParamType::Int: {
+            int* cast = (int*)paramPtr;
+            return to_string(*cast);
+        }
+                      break;
+        case ParamType::Bool: {
+            bool* cast = (bool*)paramPtr;
+            return to_string(*cast);
+        }
+                       break;
+        case ParamType::String: {
+            string* cast = (string*)paramPtr;
+            return *cast;
+        }
+                         break;
+        default:
+            break;
+        }
+
+
+    }
+
+    // set value based on loaded string
+
+    void to_json(json& j, const GUIParam& p) {
+        j["name"] = p.name;
+        j["type"] = tools::toString(p.type);
+
+        switch (p.type) {
+        case ParamType::Float:  j["value"] = *(float*)p.paramPtr; break;
+        case ParamType::Int:    j["value"] = *(int*)p.paramPtr; break;
+        case ParamType::Bool:   j["value"] = *(bool*)p.paramPtr; break;
+        case ParamType::String:j["value"] = *(string*)p.paramPtr; break;
+        }
+    }
+
+    void from_json(const json& j, GUIParam& p) {
+        p.name = j["name"];
+        p.type = tools::fromString(j["type"]);
+
+        switch (p.type) {
+        case ParamType::Float:  *(float*)p.paramPtr = j["value"]; break;
+        case ParamType::Int:    *(int*)p.paramPtr = j["value"]; break;
+        case ParamType::Bool:   *(bool*)p.paramPtr = j["value"]; break;
+        case ParamType::String:*(string*)p.paramPtr = j["value"]; break;
+        }
+    }
+
 };
 
 

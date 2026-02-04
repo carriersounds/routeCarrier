@@ -95,7 +95,7 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
             INDENT_NEXT
                 string knob = to_string(ID) + "##Input Gain";
             ImGui::PushID(knob.c_str());
-            if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+            if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -48, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
             ifDoubleClicked{ (deviceGain_dB = 0.0f); parameterChanged.store(true); }
             ImGui::PopID();
         }
@@ -126,7 +126,7 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
         if (showInterface) {
             INDENT_NEXT     
             ImGui::PushID(knob.c_str());
-            if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
+            if (ImGuiKnobs::Knob("Gain", &deviceGain_dB, -48, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) parameterChanged.store(true);
             ifDoubleClicked{ (deviceGain_dB = 0.0f); parameterChanged.store(true); }
             ImGui::PopID();
             ImGui::SameLine(0, 30);
@@ -260,7 +260,7 @@ int DeviceNode::readFromFifoTo(float* const* output, int numSamples)
     // Update PID / Ratio
     double diff = getAvgFill() - 1024.0;
 
-    diff *= abs(tanh(0.1 * diff));
+   // diff *= abs(tanh(0.1 * diff));
     SRC_ratio = SRC_base - (recoverStrength * diff);
     SRC_ratio = juce::jlimit(SRC_base*0.95, SRC_base*1.05, SRC_ratio);      // should not hit, more for safety
     
@@ -411,6 +411,7 @@ void DeviceNode::audioDeviceIOCallbackWithContext(const float* const* inputChann
 }
 void DeviceNode::setAsMainOutput(bool set) {   
     trigger = set ? trigAddress : nullptr;
+
 }
 void DeviceNode::setTriggerAddress(juce::WaitableEvent* trigger) {
     this->trigAddress = trigger; 

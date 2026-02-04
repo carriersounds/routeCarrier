@@ -4,8 +4,6 @@
 #include <JuceHeader.h>
 #include "AudioNodes.h"
 
-
-
 class DSPNode: public AudioNode, public juce::AudioProcessor
 {
 public:
@@ -20,7 +18,6 @@ public:
     // Interface
     void renderAsNode(float pinSize, float spacing) override;               // render name & i/o pins
     virtual void renderInterface(float nodeW) = 0;                              // render actual effect interface / params
-    virtual EffectType getType() = 0;                                       // used by GUI for parameter management
 
 protected:
     virtual void prepareDSP(const juce::dsp::ProcessSpec&) = 0;

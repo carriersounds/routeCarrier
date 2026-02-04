@@ -1,6 +1,8 @@
 #include "FileIO.h"
 #include "Program.h"
 
+#include "AudioNodes.h"
+
 FileIO::FileIO(Program* input) {
     currentAudioFile = 0;
     amtAudioFilesLoaded = 0;
@@ -17,6 +19,29 @@ std::filesystem::path FileIO::getEXEDir() {
     GetModuleFileNameA(NULL, buffer, MAX_PATH);
     return std::filesystem::path(buffer).parent_path();
 }
+
+string NodePreset::saveCurrentState() {
+    string NodeStateString = "NODE {";
+
+
+    NodeStateString += "<" + blockNames[(int)master->getBlockType()] + ">";
+    NodeStateString += master->getBlockName();
+    NodeStateString += to_string(master->getID());
+
+
+    for (auto& param : params) {
+
+        NodeStateString += param.name;
+        NodeStateString += " = ";
+        NodeStateString += param.saveParamValue();
+        NodeStateString += ";";
+    }
+
+    NodeStateString += "\n}";
+
+    return NodeStateString;     // confirmed working
+}
+
 
 void FileIO::selectFile(bool folder, int recursive, bool openDialog, string extFileLoad)
 {

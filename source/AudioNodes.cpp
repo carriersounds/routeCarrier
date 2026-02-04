@@ -1,14 +1,15 @@
 #include "AudioEngine.h"
 #include "AudioNodes.h"
 
-AudioNode::AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) : 
+AudioNode::AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID, bool asPreset) :
 	m_blockType(blocktype), 
 	Name(initDeviceName),
 	ID(nodeID),
 	numChannels(2), 
 	inputBuffer(2, BLOCKSIZE),
 	outputBuffer(2, BLOCKSIZE),
-    GUIbuffer(2,BLOCKSIZE)
+    GUIbuffer(2,BLOCKSIZE),
+    currentState(this)
 { 
 	inputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);
 	outputBuffer.setSize(numChannels, BLOCKSIZE, false, true, true);

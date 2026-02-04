@@ -90,7 +90,7 @@ public:
 
 
 protected:
-    EffectType getType() { return EffectType::EQ; }
+
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { 
         drywet.reset(), drywet.prepare(spec);
         for (auto& f : chainVec) { f.reset(); f.prepare(spec); }
@@ -198,7 +198,7 @@ public:
     int filterType{ 0 };
 
 protected: 
-    EffectType getType() { return EffectType::Filter; }
+
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{filter.reset(); filter.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
     void renderInterface(float nodeW) override;
@@ -218,7 +218,6 @@ public:
 
 protected:
     void renderInterface(float nodeW) override;
-    EffectType getType() { return EffectType::Gain; }
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override{gain.reset();gain.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
 
@@ -254,7 +253,7 @@ public:
 protected:
     void renderInterface(float nodeW) override;
 
-    EffectType getType() { return EffectType::Reverb; }
+
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { reverb.reset(); reverb.prepare(spec); }
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
 
@@ -278,6 +277,14 @@ public:
         saturator.get<0>().setGainDecibels(inputGainDB);
         setType(DistortionType::softclip);
         saturator.get<2>().setGainDecibels(outputGainDB);
+
+
+        // preset
+        currentState.defineSetting("InputGain", &inputGainDB);
+        currentState.defineSetting("OutputGain", &outputGainDB);
+        currentState.defineSetting("DistType", &distortionType);
+        currentState.defineSetting("DryWet", &dryWetMix);
+
     }
 
     float inputGainDB;
@@ -288,10 +295,9 @@ public:
 protected:
     
     void renderInterface(float nodeW) override;
-    EffectType getType() { return EffectType::Gain; }
+
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { saturator.reset(); saturator.prepare(spec);  drywet.reset(), drywet.prepare(spec); }
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
-
     void setType(DistortionType type) {
         auto& waveshaper = saturator.template get<1>();
         switch (type)
@@ -320,8 +326,8 @@ protected:
             break;
         }
     }
-private:
 
+private:
     juce::dsp::ProcessorChain<JuceGain,JuceShaper,JuceGain> saturator;
     juce::dsp::DryWetMixer<float> drywet;
 
@@ -339,22 +345,22 @@ public:
 
 protected:
 
-    void addEffect(EffectType type) {
+    void addEffect(BlockType type) {
         switch (type)
         {
-        case EffectType::Filter:
-            chain.push_back(make_unique<Filter>(BlockType::DSP, "Filter", ID));
+        case BlockType::Filter:
+            chain.push_back(make_unique<Filter>(BlockType::Filter, "Filter", ID));
             
             break;
-        case EffectType::Phaser:
+        case BlockType::Phaser:
             break;
-        case EffectType::Gain:
+        case BlockType::Gain:
             break;
-        case EffectType::Reverb:
+        case BlockType::Reverb:
             break;
-        case EffectType::EQ:
+        case BlockType::EQ:
             break;
-        case EffectType::Saturator:
+        case BlockType::Saturator:
             break;
         default:
             break;
@@ -377,7 +383,7 @@ protected:
     }
 
     void renderInterface(float nodeW) override;
-    EffectType getType() { return EffectType::Gain; }
+
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { saturator.reset(); saturator.prepare(spec);  drywet.reset(), drywet.prepare(spec); }
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
 
@@ -421,7 +427,7 @@ public:
 
 protected:
     void renderInterface(float nodeW) override;
-    EffectType getType() { return EffectType::Gain; }
+
     void prepareDSP(const juce::dsp::ProcessSpec& spec) override { compressor.reset(); compressor.prepare(spec); drywet.reset(), drywet.prepare(spec);}
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
 
@@ -450,7 +456,7 @@ public:
 protected:
     void renderInterface(float nodeW) override;
     void processDSP(juce::dsp::AudioBlock<float>& block) override;
-    EffectType getType() { return EffectType::Gain; }
+
     void prepareDSP(const juce::dsp::ProcessSpec & spec) override { 
         midside.reset();
         pan.reset();

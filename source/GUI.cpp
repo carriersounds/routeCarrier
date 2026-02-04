@@ -2,9 +2,7 @@
 #include "Program.h"
 #include "AudioEffects.h"
 #include "AudioDSPNode.h"
-
-#define tRight ImGui::TableNextColumn()
-#define tDown ImGui::TableNextRow()
+#include <windowsx.h>
 
 GUI::GUI(Program* prog) : prog(prog){
 
@@ -35,7 +33,13 @@ int GUI::imGuiSetup() {
 
     // 1900 x 1080 = full
     wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Route Carrier", nullptr }; ::RegisterClassExW(&wc);
-    hwnd = ::CreateWindowW(wc.lpszClassName, L"Route Carrier", WS_CAPTION | WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1800, 1000, nullptr, nullptr, wc.hInstance, nullptr);   // maximize in imguisetup 
+    hwnd = ::CreateWindowW(
+        wc.lpszClassName,
+        L"Route Carrier",
+        WS_CAPTION | WS_OVERLAPPEDWINDOW,//WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SYSMENU, // WS_POPUP removes the default title bar
+        CW_USEDEFAULT, CW_USEDEFAULT, 1800, 1000,
+        nullptr, nullptr, wc.hInstance, nullptr
+    );   // maximize in imguisetup 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
@@ -340,11 +344,13 @@ void GUI::renderAllModules() {
 
     // ImGui Rendering functions start
     renderMainDockSpace();
-    
+  //  renderTitleBar();
+    renderMenuBar();
     renderMixPanel();
+
   //  renderDeviceList();
     renderToolbar();
-    renderMenuBar();
+
 
  
     renderMeters();
@@ -370,116 +376,136 @@ void GUI::renderMainDockSpace() {
 
 }
 
+void GUI::renderTitleBar() {
+    // 1. Set position and size to the very top of the OS window
+   // ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, 32)); // 32px height
+
+    // 2. Use specific flags to make it feel like a title bar
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar;
+
+    if (ImGui::Begin("##TitleBar", nullptr, flags)) {
+
+        ImGui::Text("Route Carrier");
+
+        // Align buttons to the right
+        float buttonSize = 30.0f;
+        ImGui::SameLine(ImGui::GetWindowWidth() - (buttonSize * 3) - 10);
+
+        // --- MINIMIZE ---
+        if (ImGui::Button("_", ImVec2(buttonSize, 0))) {
+            ::ShowWindow(hwnd, SW_MINIMIZE);
+        }
+
+        // --- MAXIMIZE / RESTORE ---
+        ImGui::SameLine();
+        if (ImGui::Button("[]", ImVec2(buttonSize, 0))) {
+            WINDOWPLACEMENT wp;
+            wp.length = sizeof(WINDOWPLACEMENT);
+            GetWindowPlacement(hwnd, &wp);
+            if (wp.showCmd == SW_SHOWMAXIMIZED)
+                ::ShowWindow(hwnd, SW_RESTORE);
+            else
+                ::ShowWindow(hwnd, SW_MAXIMIZE);
+        }
+
+        // --- CLOSE ---
+        ImGui::SameLine();
+        if (ImGui::Button("X", ImVec2(buttonSize, 0))) {
+            ::PostQuitMessage(0);
+        }
+
+        // 3. Logic for dragging the window
+        if (ImGui::IsWindowHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            // This allows the user to click the bar and move the whole OS window
+            ::ReleaseCapture();
+            ::SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        }
+        ImGui::End();
+    }
+}
+
 void GUI::renderMenuBar() {
 
     int frameNumber = ImGui::GetFrameCount();
     static bool keyCommands = 0;
     static int recursiveLoad = 0;
 
-    // Hotkeys --------------------
-
-    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow));
-    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow));
-
-    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyReleased(ImGuiKey_O));
-    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyReleased(ImGuiKey_F));
-    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyDown(ImGuiMod_Shift) && ImGui::IsKeyReleased(ImGuiKey_F));
-    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyReleased(ImGuiKey_L));
-    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyReleased(ImGuiKey_S));
-    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyDown(ImGuiMod_Shift) && ImGui::IsKeyReleased(ImGuiKey_S));
-
-    // view modifiers
-
-    
-    if (ImGui::IsKeyDown(ImGuiMod_Alt) && ImGui::IsKeyReleased(ImGuiKey_L)) showLog = !showLog;
-    if (ImGui::IsKeyDown(ImGuiMod_Alt) && ImGui::IsKeyReleased(ImGuiKey_T)) showMetrics = !showMetrics;
-
-    if (ImGui::IsKeyPressed(ImGuiKey_F9)) setViewport(UI::hide);
-    if (ImGui::IsKeyPressed(ImGuiKey_F10)) setViewport(UI::hide);
-
-    if (ImGui::IsKeyReleased(ImGuiKey_Space)) {
-
-    }
-
-    
-
-    //\ Hotkeys -----------------------
-
 
     if (ImGui::BeginMainMenuBar()) {
 
         if (ImGui::BeginMenu("File")) {
-                if (ImGui::MenuItem("Open Image", "Ctrl + O")) prog->selectFile(f_openDialog, f_openFile, f_current, recursiveLoad);
-                ImGui::SetItemTooltip("Load and view image");
-                if (ImGui::MenuItem("Open Folder", "Ctrl + F")) prog->selectFile(f_openDialog, f_openFolder, f_current, recursiveLoad);
-                ImGui::SetItemTooltip("Load and view image");
-                ImGui::Separator();
+            if (ImGui::MenuItem("Open Image", "Ctrl + O")) prog->selectFile(f_openDialog, f_openFile, f_current, recursiveLoad);
+            ImGui::SetItemTooltip("Load and view image");
+            if (ImGui::MenuItem("Open Folder", "Ctrl + F")) prog->selectFile(f_openDialog, f_openFolder, f_current, recursiveLoad);
+            ImGui::SetItemTooltip("Load and view image");
+            ImGui::Separator();
 
-                if (ImGui::BeginMenu("Folder load behaviour")) {
-                    ImGui::RadioButton("Load current folder only", &recursiveLoad, 0);
-                    ImGui::RadioButton("Load sub-folders recursively", &recursiveLoad, 1);
-                    ImGui::EndMenu();
-                }
+            if (ImGui::BeginMenu("Folder load behaviour")) {
+                ImGui::RadioButton("Load current folder only", &recursiveLoad, 0);
+                ImGui::RadioButton("Load sub-folders recursively", &recursiveLoad, 1);
+                ImGui::EndMenu();
+            }
 
-                ImGui::Separator();
-                if (ImGui::MenuItem("Save Current Image", "Ctrl + S")) prog->fileIO.manualSaveFile(0);
-                if (ImGui::MenuItem("Save as...", "Ctrl + Shift + S")) prog->fileIO.manualSaveFile(1);
-                ImGui::SetItemTooltip("Save currently shown image\nSelect View > Binarized to save thresholded image");
+            ImGui::Separator();
+            if (ImGui::MenuItem("Save Current Image", "Ctrl + S")) prog->fileIO.manualSaveFile(0);
+            if (ImGui::MenuItem("Save as...", "Ctrl + Shift + S")) prog->fileIO.manualSaveFile(1);
+            ImGui::SetItemTooltip("Save currently shown image\nSelect View > Binarized to save thresholded image");
 
-                if (ImGui::BeginMenu("Default save directory")) {
+            if (ImGui::BeginMenu("Default save directory")) {
 
-                    static std::filesystem::path dirs[] = { prog->fileIO.getEXEDir().parent_path().parent_path() / "Recordings\\","D:\\LRI\\Vision\\" };
-                    static int dirIndex = 0;
+                static std::filesystem::path dirs[] = { prog->fileIO.getEXEDir().parent_path().parent_path() / "Recordings\\","D:\\LRI\\Vision\\" };
+                static int dirIndex = 0;
 
-                    const char* save_directories[] =
+                const char* save_directories[] =
+                {
+                    "\\Recordings\\", "D:\\LRI\\Vision\\", "Custom folder"
+                };
+
+                static char customSave[MAX_PATH];
+                char hint[] = "Paste or type custom folder";
+
+                if (ImGui::Combo("Select", &dirIndex, save_directories, IM_ARRAYSIZE(save_directories), IM_ARRAYSIZE(save_directories))
+                    || ImGui::InputTextWithHint("Custom", hint, customSave, MAX_PATH,
+                        ImGuiInputTextFlags_EnterReturnsTrue |
+                        ImGuiInputTextFlags_ElideLeft)) {
+
+                    switch (dirIndex)
                     {
-                        "\\Recordings\\", "D:\\LRI\\Vision\\", "Custom folder"
-                    };
-
-                    static char customSave[MAX_PATH];
-                    char hint[] = "Paste or type custom folder";
-
-                    if (ImGui::Combo("Select", &dirIndex, save_directories, IM_ARRAYSIZE(save_directories), IM_ARRAYSIZE(save_directories))
-                        || ImGui::InputTextWithHint("Custom", hint, customSave, MAX_PATH,
-                            ImGuiInputTextFlags_EnterReturnsTrue |
-                            ImGuiInputTextFlags_ElideLeft)) {
-
-                        switch (dirIndex)
-                        {
-                        case 0:
-                            prog->fileIO.saveDir = prog->fileIO.getEXEDir() / "assets\\Recordings\\";
-                            break;
-                        case 1:
-                            prog->fileIO.saveDir = "D:\\LRI\\Vision\\";
-                            break;
-                        case 2:
-                            prog->fileIO.saveDir = customSave;
-                            break;
-                        default:
-                            break;
-                        }
-
+                    case 0:
+                        prog->fileIO.saveDir = prog->fileIO.getEXEDir() / "assets\\Recordings\\";
+                        break;
+                    case 1:
+                        prog->fileIO.saveDir = "D:\\LRI\\Vision\\";
+                        break;
+                    case 2:
+                        prog->fileIO.saveDir = customSave;
+                        break;
+                    default:
+                        break;
                     }
 
-                    ImGui::EndMenu();
                 }
-
-
-
-                ImGui::Separator();
 
                 ImGui::EndMenu();
             }
-        
+
+
+
+            ImGui::Separator();
+
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Audio")) {
 
-              
 
-                ImGui::EndMenu();
+
+            ImGui::EndMenu();
         }
-        
+
         if (ImGui::BeginMenu("View")) {
-            
+
             if (ImGui::MenuItem("Keyboard Shortcuts")) keyCommands = true;
             ImGui::Separator();
 
@@ -488,7 +514,7 @@ void GUI::renderMenuBar() {
                 ImGui::Checkbox("Log window", &showLog);
                 ImGui::Checkbox("Demo Windows", &showDemos);
                 ImGui::Checkbox("Mixer Panel", &showMixer);
-                
+
 
                 ImGui::EndMenu();
             }
@@ -507,87 +533,147 @@ void GUI::renderMenuBar() {
 
         if (ImGui::BeginMenu("About")) {
 
-                if (ImGui::BeginMenu("Version Information")) {
+            if (ImGui::BeginMenu("Version Information")) {
 
-                    ImGui::Text("routeCarrier Virtual Audio Mixer");
+                ImGui::Text("routeCarrier Virtual Audio Mixer");
 #ifdef _DEBUG
-                    ImGui::Text("Debug Build");
+                ImGui::Text("Debug Build");
 #else
-                    ImGui::Text("Release Build");
+                ImGui::Text("Release Build");
 #endif
 
-                    ImGui::Text("Compiled on: %s", timestamp.data());
-                    ImGui::Text("ImGui version: %s", ImGui::GetVersion());
-
-                    ImGui::EndMenu();
-                }
-
+                ImGui::Text("Compiled on: %s", timestamp.data());
+                ImGui::Text("ImGui version: %s", ImGui::GetVersion());
 
                 ImGui::EndMenu();
             }
 
+
+            ImGui::EndMenu();
+        }
+
         if (keyCommands) {
 
-                ImGui::Begin("Keyboard Shortcuts", &keyCommands);
-                ImGui::BeginTable("Shortcutss", 2);
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
+            ImGui::Begin("Keyboard Shortcuts", &keyCommands);
+            ImGui::BeginTable("Shortcutss", 2);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
 
-                ImGui::Text("Open Image"); ImGui::TableNextColumn();
-                ImGui::Text("Ctrl + O"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Open Folder"); ImGui::TableNextColumn();
-                ImGui::Text("Ctrl + F"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Open Folder recursively"); ImGui::TableNextColumn();
-                ImGui::Text("Ctrl + Shift + F"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Open Image"); ImGui::TableNextColumn();
+            ImGui::Text("Ctrl + O"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Open Folder"); ImGui::TableNextColumn();
+            ImGui::Text("Ctrl + F"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Open Folder recursively"); ImGui::TableNextColumn();
+            ImGui::Text("Ctrl + Shift + F"); ImGui::TableNextRow(); ImGui::TableNextColumn();
 
-                ImGui::Text("Goto Last Image");  ImGui::TableNextColumn();
-                ImGui::Text("Left Arrow"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Goto Next Image"); ImGui::TableNextColumn();
-                ImGui::Text("Right Arrow"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Goto Last Image");  ImGui::TableNextColumn();
+            ImGui::Text("Left Arrow"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Goto Next Image"); ImGui::TableNextColumn();
+            ImGui::Text("Right Arrow"); ImGui::TableNextRow(); ImGui::TableNextColumn();
 
-                ImGui::Text("Save Current Image"); ImGui::TableNextColumn();
-                ImGui::Text("Ctrl + S"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Save Image As..."); ImGui::TableNextColumn();
-                ImGui::Text("Ctrl + Shift + S"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Save Current Image"); ImGui::TableNextColumn();
+            ImGui::Text("Ctrl + S"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Save Image As..."); ImGui::TableNextColumn();
+            ImGui::Text("Ctrl + Shift + S"); ImGui::TableNextRow(); ImGui::TableNextColumn();
 
-                ImGui::Separator();
-                ImGui::Text("Start/stop Cam"); ImGui::TableNextColumn();
-                ImGui::Separator();
-                ImGui::Text("Spacebar"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Next Image Trig"); ImGui::TableNextColumn();
-                ImGui::Text("Spacebar"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Toggle Light"); ImGui::TableNextColumn();
-                ImGui::Text("Ctrl + L"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Separator();
+            ImGui::Text("Start/stop Cam"); ImGui::TableNextColumn();
+            ImGui::Separator();
+            ImGui::Text("Spacebar"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Next Image Trig"); ImGui::TableNextColumn();
+            ImGui::Text("Spacebar"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Toggle Light"); ImGui::TableNextColumn();
+            ImGui::Text("Ctrl + L"); ImGui::TableNextRow(); ImGui::TableNextColumn();
 
-                ImGui::Text("Image zoom"); ImGui::TableNextColumn();
-                ImGui::Text("Scrollwheel"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Image drag"); ImGui::TableNextColumn();
-                ImGui::Text("Left mouse btn"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Image viewer menu"); ImGui::TableNextColumn();
-                ImGui::Text("Right mouse btn"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Image zoom"); ImGui::TableNextColumn();
+            ImGui::Text("Scrollwheel"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Image drag"); ImGui::TableNextColumn();
+            ImGui::Text("Left mouse btn"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Image viewer menu"); ImGui::TableNextColumn();
+            ImGui::Text("Right mouse btn"); ImGui::TableNextRow(); ImGui::TableNextColumn();
 
-                ImGui::Separator();
-                ImGui::Text("Toggle Calibration mode"); ImGui::TableNextColumn();
-                ImGui::Separator();
-                ImGui::Text("Alt + C"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Toggle Settings menu"); ImGui::TableNextColumn();
-                ImGui::Text("Alt + S"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Variable Management"); ImGui::TableNextColumn();
-                ImGui::Text("Alt + V"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Toggle timer view"); ImGui::TableNextColumn();
-                ImGui::Text("Alt + T"); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                ImGui::Text("Toggle log window"); ImGui::TableNextColumn();
-                ImGui::Text("Alt + L"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Separator();
+            ImGui::Text("Toggle Calibration mode"); ImGui::TableNextColumn();
+            ImGui::Separator();
+            ImGui::Text("Alt + C"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Toggle Settings menu"); ImGui::TableNextColumn();
+            ImGui::Text("Alt + S"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Variable Management"); ImGui::TableNextColumn();
+            ImGui::Text("Alt + V"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Toggle timer view"); ImGui::TableNextColumn();
+            ImGui::Text("Alt + T"); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Toggle log window"); ImGui::TableNextColumn();
+            ImGui::Text("Alt + L"); ImGui::TableNextRow(); ImGui::TableNextColumn();
 
 
 
-                ImGui::EndTable();
-                ImGui::End();
-            }
+            ImGui::EndTable();
+            ImGui::End();
+        }
+#if 0
+        // Align buttons to the right
+        float buttonSize = 30.0f;
+        ImGui::SameLine(ImGui::GetWindowWidth() - (buttonSize * 3) - 50);
 
+        // --- MINIMIZE ---
+        if (ImGui::Button("_", ImVec2(buttonSize, 0))) {
+            ::ShowWindow(hwnd, SW_MINIMIZE);
+        }
+
+        // --- MAXIMIZE / RESTORE ---
+        ImGui::SameLine();
+        if (ImGui::Button("[]", ImVec2(buttonSize, 0))) {
+            WINDOWPLACEMENT wp;
+            wp.length = sizeof(WINDOWPLACEMENT);
+            GetWindowPlacement(hwnd, &wp);
+            if (wp.showCmd == SW_SHOWMAXIMIZED)
+                ::ShowWindow(hwnd, SW_RESTORE);
+            else
+                ::ShowWindow(hwnd, SW_MAXIMIZE);
+        }
+
+        // --- CLOSE ---
+        ImGui::SameLine();
+        if (ImGui::Button("X", ImVec2(buttonSize, 0))) {
+            ::PostQuitMessage(0);
+        }
+
+        // 3. Logic for dragging the window
+        if (ImGui::IsWindowHovered() && !ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            // This allows the user to click the bar and move the whole OS window
+            
+            ReleaseCapture();
+            SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        }
+#endif
         ImGui::EndMainMenuBar();
     }
+
+    // Hotkeys --------------------
+    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow));
+    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow));
+
+    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyReleased(ImGuiKey_O));
+    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyReleased(ImGuiKey_F));
+    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyDown(ImGuiMod_Shift) && ImGui::IsKeyReleased(ImGuiKey_F));
+    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyReleased(ImGuiKey_L));
+    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyReleased(ImGuiKey_S));
+    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyDown(ImGuiMod_Shift) && ImGui::IsKeyReleased(ImGuiKey_S));
+
+    // view modifiers
+   
+    if (ImGui::IsKeyDown(ImGuiMod_Alt) && ImGui::IsKeyReleased(ImGuiKey_L)) showLog = !showLog;
+    if (ImGui::IsKeyDown(ImGuiMod_Alt) && ImGui::IsKeyReleased(ImGuiKey_M)) showMetrics = !showMetrics;
+    if (ImGui::IsKeyPressed(ImGuiKey_F9)) setViewport(UI::hide);
+    if (ImGui::IsKeyPressed(ImGuiKey_F10)) setViewport(UI::hide);
+
+    if (ImGui::IsKeyReleased(ImGuiKey_Space)) 
+        toggle(prog->audio.enableRouting);
     
+    //\ Hotkeys -----------------------
+
+
+
 }
 
 void GUI::renderLog()
@@ -605,52 +691,77 @@ void GUI::renderToolbar() {
     Drag the Button onto the graph to place it at a specific location       
     */
 
-    DragDropBlock dropper = DragDropBlock::None;
+    BlockType dropper = BlockType::NullDevice;
     static bool showOldFX = false;
 
 
     ImGui::SeparatorText("Audio Effects");
     ImGui::Dummy({ 5,5 });
 
-    if (ImGui::Button("Channel Utility")) prog->audio.addNewDSPNode(EffectType::ChannelUtil);
-    tools::ImDragDropMacro(dropper, DragDropBlock::ChannelUtil);
+    if (ImGui::Button("Channel Utility")) prog->audio.addNewDSPNode(BlockType::ChannelUtil);
+    tools::ImDragDropMacro(dropper, BlockType::ChannelUtil);
 
     ImGui::SameLine();
-    if (ImGui::Button("Graphic EQ")) prog->audio.addNewDSPNode(EffectType::EQ);
-    tools::ImDragDropMacro(dropper, DragDropBlock::EQ);
+    if (ImGui::Button("Graphic EQ")) prog->audio.addNewDSPNode(BlockType::EQ);
+    tools::ImDragDropMacro(dropper, BlockType::EQ);
 
-    if (ImGui::Button("Compressor")) prog->audio.addNewDSPNode(EffectType::Compressor);
-    tools::ImDragDropMacro(dropper, DragDropBlock::Compressor);
+    if (ImGui::Button("Compressor")) prog->audio.addNewDSPNode(BlockType::Compressor);
+    tools::ImDragDropMacro(dropper, BlockType::Compressor);
 
     ImGui::SameLine();
-    if (ImGui::Button("Saturator")) prog->audio.addNewDSPNode(EffectType::Saturator);
-    tools::ImDragDropMacro(dropper, DragDropBlock::Saturator);
+    if (ImGui::Button("Saturator")) prog->audio.addNewDSPNode(BlockType::Saturator);
+    tools::ImDragDropMacro(dropper, BlockType::Saturator);
 
-    if (ImGui::Button("Reverb")) prog->audio.addNewDSPNode(EffectType::Reverb);
-    tools::ImDragDropMacro(dropper, DragDropBlock::Reverb);
+    if (ImGui::Button("Reverb")) prog->audio.addNewDSPNode(BlockType::Reverb);
+    tools::ImDragDropMacro(dropper, BlockType::Reverb);
    
 
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.11f, 0.23f, 0.34f, 0.3f));
 
     ImGui::Dummy({ 10,2 });
-    ImGui::Separator();
-    ImGui::Dummy({ 5,2 });
-
 
     tools::toggleButton("Show Old FX", showOldFX);
 
     if (showOldFX) {
-        if (ImGui::Button("Simple Gain")) prog->audio.addNewDSPNode(EffectType::Gain);
-        tools::ImDragDropMacro(dropper, DragDropBlock::Gain);
+        if (ImGui::Button("Simple Gain")) prog->audio.addNewDSPNode(BlockType::Gain);
+        tools::ImDragDropMacro(dropper, BlockType::Gain);
         ImGui::SameLine();
-        if (ImGui::Button("Simple Filter")) prog->audio.addNewDSPNode(EffectType::Filter);
-        tools::ImDragDropMacro(dropper, DragDropBlock::Filter);
+        if (ImGui::Button("Simple Filter")) prog->audio.addNewDSPNode(BlockType::Filter);
+        tools::ImDragDropMacro(dropper, BlockType::Filter);
     }
 
     ImGui::NewLine();
     ImGui::NewLine();
 
+    ImGui::Separator();
+    ImGui::Dummy({ 5,2 });
+
     static auto& deviceTypes = prog->audio.nullDevice.deviceManager.getAvailableDeviceTypes();
+    
+
+    int itemType = 0;
+
+    vector<const char *> devs;
+
+    for (size_t i = 0; i < deviceTypes.size(); i++)
+    {
+        devs.push_back(deviceTypes[i]->getTypeName().toRawUTF8());
+    }
+    
+
+    if (ImGui::BeginCombo("Audio Driver", devs[itemType])) {
+
+        for (size_t i = 0; i < deviceTypes.size(); i++) {
+           
+            const bool is_selected = (itemType == i);
+            if (ImGui::Selectable(devs[i], is_selected))
+                itemType = i;
+
+        }
+       
+        ImGui::EndCombo();
+    }
+    
     static juce::AudioIODeviceType* type = deviceTypes.getFirst();                                      // takes WASAPI, maybe check for Low Latency?
 
     static juce::StringArray inputs;
@@ -676,9 +787,9 @@ void GUI::renderToolbar() {
 
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
         {
-            dropper = DragDropBlock::Device;
+            dropper = BlockType::InputDevice ;
             // triggers only on 1st button click
-            ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+            ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(BlockType)); // Set payload to carry the index of our item (could be anything)
             ImGui::EndDragDropSource();
             grabbedType = BlockType::InputDevice;
             grabbedDevice = s.toStdString();
@@ -698,9 +809,9 @@ void GUI::renderToolbar() {
         }
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))        // triggers continuously when grabbing
         {
-            dropper = DragDropBlock::Device;
+            dropper = BlockType::OutputDevice;
             // triggers only on 1st button click
-            ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(DragDropBlock)); // Set payload to carry the index of our item (could be anything)
+            ImGui::SetDragDropPayload("DND_DEMO_CELL", &dropper, sizeof(BlockType)); // Set payload to carry the index of our item (could be anything)
             ImGui::EndDragDropSource();
             grabbedType = BlockType::OutputDevice;
             grabbedDevice = s.toStdString();
@@ -760,45 +871,14 @@ void GUI::renderMixPanel() {
         if (payload)
         {
             NodeID nodeToGiveInitPosition = 0;
-            IM_ASSERT(payload->DataSize == sizeof(DragDropBlock));
-            DragDropBlock dragPayload = *(const DragDropBlock*)payload->Data;
+            IM_ASSERT(payload->DataSize == sizeof(BlockType));
+            BlockType dragPayload = *(const BlockType*)payload->Data;
 
-            switch (dragPayload)
-            {
-                case DragDropBlock::Device:
-                    nodeToGiveInitPosition = prog->audio.addNewDeviceNode(grabbedType, grabbedDevice);
-                    Logger::log("Added Device: " + grabbedDevice, level_INFO);
-                    break;
-                case DragDropBlock::Filter:
-                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Filter);
-                    Logger::log("Added Filter",level_INFO);
-                    break;
-                case DragDropBlock::Gain:
-                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Gain);
-                    Logger::log("Added Gain", level_INFO);
-                    break;
-                case DragDropBlock::Reverb:
-                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Reverb);
-                    Logger::log("Added Reverb", level_INFO);
-                    break;
-                case DragDropBlock::EQ:
-                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::EQ);
-                    Logger::log("Added EQ", level_INFO);
-                    break;
-                case DragDropBlock::Saturator:
-                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Saturator);
-                    Logger::log("Added Saturator", level_INFO);
-                    break;
-                case DragDropBlock::ChannelUtil:
-                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::ChannelUtil);
-                    Logger::log("Added Channel util", level_INFO);
-                    break;
-                case DragDropBlock::Compressor:
-                    nodeToGiveInitPosition = prog->audio.addNewDSPNode(EffectType::Compressor);
-                    Logger::log("Added Compressor", level_INFO);
-                    break;
-                default:
-                    break;
+            if (dragPayload == BlockType::InputDevice || dragPayload == BlockType::OutputDevice) {
+                nodeToGiveInitPosition = prog->audio.addNewDeviceNode(grabbedType, grabbedDevice);
+            }
+            else {
+                nodeToGiveInitPosition = prog->audio.addNewDSPNode(dragPayload);
             }
 
             node::SetNodePosition(nodeToGiveInitPosition, ImGui::GetMousePos()); //once, to make sure it drops on the right spot!
@@ -1135,11 +1215,8 @@ void GUI::renderLocalNodeContextMenu(NodeID ID) {
         if (devptr->isMainOutput()) ImGui::SetItemTooltip("Already selected as main out");
     }
         break;
-    case BlockType::DSP:
-        break;
-    case BlockType::FileInput:
-        break;
     default:
+        // other right click menus
         break;
     }
 
@@ -1178,6 +1255,21 @@ LRESULT WINAPI GUI::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
         }
         break;
+    case WM_NCHITTEST: {
+
+        break;
+        // Logic to allow resizing on the edges of a borderless window
+        const LONG border_width = 8;
+        RECT rc; GetWindowRect(hWnd, &rc);
+        POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+
+        if (pt.x >= rc.left && pt.x < rc.left + border_width && pt.y >= rc.top && pt.y < rc.bottom) return HTLEFT;
+        if (pt.x < rc.right && pt.x >= rc.right - border_width && pt.y >= rc.top && pt.y < rc.bottom) return HTRIGHT;
+        if (pt.y >= rc.top && pt.y < rc.top + border_width && pt.x >= rc.left && pt.x < rc.right) return HTTOP;
+        if (pt.y < rc.bottom && pt.y >= rc.bottom - border_width && pt.x >= rc.left && pt.x < rc.right) return HTBOTTOM;
+        // Add diagonal corners for better UX...
+        break;
+    }
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }

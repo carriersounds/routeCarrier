@@ -72,20 +72,18 @@ private:
 
     int imGuiSetup();
     void renderMainDockSpace();  
+    void renderTitleBar();
     void renderMenuBar();
     void renderMixPanel();
     void renderDeviceList();
     void renderToolbar();
     void renderLocalNodeContextMenu(NodeID ID);
-
     void renderLog();
     void renderMeters();
 
     void setCustomStyle();
 
 };
-
-
 
 // extra gui elements
 struct ScrollingBuffer {

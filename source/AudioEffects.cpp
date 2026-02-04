@@ -318,20 +318,20 @@ void Equalizer::renderInterface(float nodeW) {
             changed = true;
         }    
 
-        if (ImGui::SliderInt(("Type##" + to_string(ID)).c_str(), &lastType, 0, 7, FilterTypeString[lastType].c_str())) {
+        if (ImGui::SliderInt(("Type##" + to_string(ID)).c_str(), &lastType,0, 7, FilterTypeString[lastType].c_str())) {
             bandInterface[lastClicked].typeToCtrl = (FilterType)lastType;
             changed = true;
         }
 
         ImGui::Dummy({ 0,5 });
 
-        if (ImGui::SliderFloat(("Freq##" + to_string(ID)).c_str(), &lastF, 10, 20000, "%.2f", ImGuiSliderFlags_Logarithmic)) {
+        if (ImGui::DragFloat(("Freq##" + to_string(ID)).c_str(), &lastF,10.0f, 10, 20000, "%.2f", ImGuiSliderFlags_Logarithmic)) {
             bandInterface[lastClicked].freq = (double)lastF;
             changed = true;
         }
 
         if (lastType == (int)FilterType::lowShelf || lastType == (int)FilterType::highShelf || lastType == (int)FilterType::peak) {
-            if (ImGui::SliderFloat(("Gain##" + to_string(ID)).c_str(), &lastG, -30.0f, 30.0f, "%.2f")) {
+            if (ImGui::DragFloat(("Gain##" + to_string(ID)).c_str(), &lastG,0.05f, -30.0f, 30.0f, "%.2f")) {
                 bandInterface[lastClicked].gainDB = (double)lastG;
                 changed = true;          
             }
@@ -341,14 +341,14 @@ void Equalizer::renderInterface(float nodeW) {
             ImGui::Dummy({20,23});
         }
 
-        if (ImGui::SliderFloat(("Q##" + to_string(ID)).c_str(), &lastQ, 0.01, 30.0f, "%.2f", ImGuiSliderFlags_Logarithmic)) {
+        if (ImGui::DragFloat(("Q##" + to_string(ID)).c_str(), &lastQ, 0.01f,0.02, 30.0f, "%.2f", ImGuiSliderFlags_Logarithmic)) {
             bandInterface[lastClicked].Q = (double)lastQ;
             changed = true;
         }
 
         ImGui::Dummy({ 20,20 });
 
-        if (ImGui::SliderFloat(("Dry/Wet##" + to_string(ID)).c_str(), &dryWetMix, 0.0f, 1.0f, "%.2f")) {
+        if (ImGui::DragFloat(("Dry/Wet##" + to_string(ID)).c_str(), &dryWetMix,0.05f, 0.0f, 1.0f, "%.2f")) {
             changed = true;
         }
 
@@ -500,6 +500,8 @@ void Saturator::renderInterface(float nodeW) {
         INDENT_NEXT
         if (ImGuiKnobs::Knob(ADD_ID("Dry/Wet##"), &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
         
+        if (ImGui::Button("save")) currentState.saveCurrentState();
+
         ImGui::TableNextColumn();
         
         INDENT_NEXT
@@ -538,20 +540,20 @@ void Compressor::renderInterface(float nodeW) {
 
         ImGui::Dummy({ 0,5 });
 
-        if (ImGui::DragFloat(("Attack##" + to_string(ID)).c_str(), &attack,0, 0, 20000, "%.2f ms", ImGuiSliderFlags_Logarithmic)) {       
+        if (ImGui::DragFloat(("Attack##" + to_string(ID)).c_str(), &attack,0.01f, 0, 20000, "%.2f ms", ImGuiSliderFlags_Logarithmic)) {       
             isChanged = true;
         }
 
-        if (ImGui::DragFloat(("Release##" + to_string(ID)).c_str(), &release,0, 0, 20000, "%.2f ms", ImGuiSliderFlags_Logarithmic)) {
+        if (ImGui::DragFloat(("Release##" + to_string(ID)).c_str(), &release,0.01f, 0, 20000, "%.2f ms", ImGuiSliderFlags_Logarithmic)) {
             isChanged = true;
         }
         ImGui::Dummy({ 20,20 });
 
-        if (ImGui::DragFloat(("Threshold##" + to_string(ID)).c_str(), &threshold,0, -100, 6, "%.2f dB", ImGuiSliderFlags_Logarithmic)) {
+        if (ImGui::DragFloat(("Threshold##" + to_string(ID)).c_str(), &threshold, 0.01f, -60, 6, "%.2f dB")) {
             isChanged = true;
         }
 
-        if (ImGui::DragFloat(("Ratio##" + to_string(ID)).c_str(), &ratio,0, 1, 10000, "%.2f", ImGuiSliderFlags_Logarithmic)) {
+        if (ImGui::DragFloat(("Ratio##" + to_string(ID)).c_str(), &ratio, 0.1f, 1, 100, "%.2f", ImGuiSliderFlags_Logarithmic)) {
             isChanged = true;
         }
 
@@ -563,12 +565,13 @@ void Compressor::renderInterface(float nodeW) {
 
         ImGui::TableNextColumn();
         INDENT_NEXT
-            if (ImGuiKnobs::Knob(("Out Gain##" + to_string(ID)).c_str(), &outputGainDB, -36, 24, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+            if (ImGuiKnobs::Knob(("Dry/Wet##" + to_string(ID)).c_str(), &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+
         ifDoubleClicked{ (outputGainDB = 0.0f); isChanged = true; }
 
         ImGui::SameLine();
         INDENT_NEXT
-            if (ImGuiKnobs::Knob(("Dry/Wet##" + to_string(ID)).c_str(), &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
+            if (ImGuiKnobs::Knob(("Out Gain##" + to_string(ID)).c_str(), &outputGainDB, -36, 24, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) isChanged = true;
 
         ImGui::TableNextColumn();
 

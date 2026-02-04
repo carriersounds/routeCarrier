@@ -26,7 +26,16 @@ later:
 - save preset
 - make sure you can't make the same link >1 times
 - ability to choose ASIO (like pioneer ddj for routing)
-- improve graphin GUI lmao
+
+
+
+
+
+
+ NEW TODO:
+
+ - move log of block creation to node constructor
+ - only switch case is the template for creation, rest can do with get blocktype
 
 
 */
@@ -65,7 +74,7 @@ public:
 
     // Node Interface
     NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName, NodeID PresetNodeID = 0);   // preset       // choose input or output, returns next ID
-    NodeID addNewDSPNode(EffectType typeOfEffect, NodeID PresetNodeID = 0);                               // preset       // effects = enum in function input, return is for GUI i think?   
+    NodeID addNewDSPNode(BlockType typeOfEffect, NodeID PresetNodeID = 0);                               // preset       // effects = enum in function input, return is for GUI i think?   
     void createLink(node::PinId leftPin, node::PinId rightPin, LinkID presetID = 0);                      // preset  
     void deleteNode(NodeID deviceID);                                             
     void deleteLink(LinkID linkID);                                                                                           
@@ -80,6 +89,11 @@ public:
 
 
 private:
+
+    GlobalPreset CreatePreset();
+    bool LoadPreset(const GlobalPreset& preset) { return true; }
+
+    float mainOutSampleRate = 48000;
     BaseID uniqueID;
     BaseID getNewID(Identifier type, BaseID presetComponentID = 0);
     void calculateSends(LinkID newlink);

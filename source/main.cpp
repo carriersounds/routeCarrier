@@ -13,6 +13,7 @@ int main() {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
             if (msg.message == WM_QUIT) break;  // close on X press
+
         }
 
         if (GUI::d11.update()) continue;        // skip render during window resizing, minimizing or dragging

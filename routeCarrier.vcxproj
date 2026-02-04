@@ -200,6 +200,8 @@
     <ClInclude Include="source\AudioEngine.h" />
     <ClInclude Include="source\AudioNodes.h" />
     <ClInclude Include="source\AudioVisualizerNode.h" />
+    <ClInclude Include="source\external\nlohmann-json\json.hpp" />
+    <ClInclude Include="source\external\nlohmann-json\json_fwd.hpp" />
     <ClInclude Include="source\FileIO.h" />
     <ClInclude Include="source\GUI.h" />
     <ClInclude Include="source\imgui\imconfig.h" />

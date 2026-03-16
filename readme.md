@@ -3,7 +3,7 @@
 This is a work-in-progress modular audio routing tool.
 This program is built around a node editor where audio devices can be connected by a graph structure.
 
-![Interface Demo](screenshots/screenshot10_nowWithEQ.png)
+![Interface Demo](screenshots/screenshot12_v0.1.0.png)
 
 ## Who is it for?
 
@@ -33,17 +33,12 @@ This program is built around a node editor where audio devices can be connected 
 - Source files for [ImGui](https://github.com/ocornut/imgui), [ImPlot](https://github.com/epezent/implot), [ImGui Node Editor](https://github.com/thedmd/imgui-node-editor) and [ImGui Knobs](https://github.com/altschuler/imgui-knobs) are all integrated in the `source/imgui` directory and referenced locally. Also because some elements of these libraries have been modified.
 
 
-## Current State
-- Basic DSP blocks and toolbar (EQ, compressor, reverb, saturation etc)
-- Not a lot of street cred so Windows will probably still flag the app
-
-Other WIP features which are planned be implemented in the future
-
+## Planned features
 - Saving and loading presets 
-- More utility fx: Multiband, auto-gain, color fx, etc..
-- Soundboard - file input
-- Recorder - file output
-- Multichannel device support (3+ channels per device), currently it forces 2 channels per device
+- Soundboard / Recorder (audio file I/O)
+- Audio from individual applications as input sources
+- More native fx: Multiband, auto-gain, color fx, etc..
+- Multichannel device support (3+ channels per device), currently it handles up to 2 channels per device
 - VST node support, bring your own plugins!
 
 

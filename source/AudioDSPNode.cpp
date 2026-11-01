@@ -1,6 +1,5 @@
 #include "AudioDSPNode.h"
 
-
 DSPNode::DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID) :
     AudioNode(blocktype, initDeviceName, nodeID),
     numInputs(2),
@@ -50,8 +49,8 @@ void DSPNode::renderAsNode(float pinSize, float spacing) {
 
     // Move cursor to the right edge.. different in debug/release for some reason
     float preciseOffset = 55.0f;
-#ifdef DEBUG
-    preciseOffset = 53.0f
+#ifdef _DEBUG
+    preciseOffset = 53.0f;
 #endif // DEBUG
 
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node::GetNodeSize(ID).x - (textSizeOut.x + spacing + preciseOffset));

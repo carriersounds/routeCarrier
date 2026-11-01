@@ -1,6 +1,6 @@
 # routeCarrier: A Modular Hardware Audio Router for Windows (WIP)
 
-This is a work-in-progress modular audio routing tool.
+This is a work-in-progress modular audio routing tool
 This program is built around a node editor where audio devices can be connected by a graph structure.
 
 ![Interface Demo](screenshots/screenshot12_v0.1.0.png)
@@ -10,6 +10,7 @@ This program is built around a node editor where audio devices can be connected 
 - DJs, streamers, audio engineers
 - Power users experimenting with audio pipelines
 - People interested in PC routing media (VoiceMeeter, Discord, OBS, Voicemod, DAWs ,Virtual Audio Cable, etc.)
+- "It's like OBS but for audio"
 
 ## Platform
 
@@ -34,9 +35,11 @@ This program is built around a node editor where audio devices can be connected 
 
 
 ## Planned features
+- Audio from individual applications as input sources
+- WASAPI Loopback (recording PC outputs)
 - Saving and loading presets 
 - Soundboard / Recorder (audio file I/O)
-- Audio from individual applications as input sources
+- Visualizer nodes (scope / spectrum)
 - More native fx: Multiband, auto-gain, color fx, etc..
 - Multichannel device support (3+ channels per device), currently it handles up to 2 channels per device
 - VST node support, bring your own plugins!

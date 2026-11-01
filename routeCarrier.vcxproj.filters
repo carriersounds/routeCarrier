@@ -142,6 +142,15 @@
     <ClCompile Include="source\main.cpp">
       <Filter>Main</Filter>
     </ClCompile>
+    <ClCompile Include="source\AudioLoopbackNode.cpp">
+      <Filter>Audio Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AudioPresets.cpp">
+      <Filter>Audio Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AudioApplicationNode.cpp">
+      <Filter>Audio Engine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\mainHeader.hpp">
@@ -236,6 +245,15 @@
     </ClInclude>
     <ClInclude Include="source\external\nlohmann-json\json_fwd.hpp">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioLoopbackNode.h">
+      <Filter>Audio Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioPresets.h">
+      <Filter>Audio Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioApplicationNode.h">
+      <Filter>Audio Engine</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

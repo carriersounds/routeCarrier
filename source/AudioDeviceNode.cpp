@@ -56,11 +56,11 @@ void DeviceNode::renderAsNode(float pinSize, float spacing) {
     tools::ImShiftCursor(0, -3);
 
     if (showInterface) {
-        if (ImGui::Button(ADD_ID(">##"), { 0,0 })) { showInterface = !showInterface; }
+        if (ImGui::Button(ADD_ID(">##"), { 0,0 })) { toggle(showInterface);}
         ImGui::SameLine(); ImGui::Dummy({ 1,1 });
     }
     else {
-        if (ImGui::Button(ADD_ID("v##"), { 0,0 })) { showInterface = !showInterface; }
+        if (ImGui::Button(ADD_ID("v##"), { 0,0 })) { toggle(showInterface); }
         ImGui::SameLine(); ImGui::Dummy({ 1,1 });
     }
     ImGui::PopStyleVar();
@@ -159,7 +159,7 @@ void DeviceNode::selectDevice(const juce::String& nameToFind, bool isOutput)
     juce::OwnedArray<juce::AudioIODeviceType> types;
     deviceManager.createAudioDeviceTypes(types);
 
-    Logger::log("Clicked Audio Device: " + nameToFind.toStdString(), level_INFO);
+  //  Logger::log("Clicked Audio Device: " + nameToFind.toStdString(), level_INFO);
 
     for (auto* type : types)
     {

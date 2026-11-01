@@ -500,7 +500,7 @@ void Saturator::renderInterface(float nodeW) {
         INDENT_NEXT
         if (ImGuiKnobs::Knob(ADD_ID("Dry/Wet##"), &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
         
-        if (ImGui::Button("save")) currentState.saveCurrentState();
+        if (ImGui::Button("save")) currentState.SaveNodeToJson();
 
         ImGui::TableNextColumn();
         

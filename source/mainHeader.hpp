@@ -554,18 +554,19 @@ struct GUIParam {
 
     }
 
-    // set value based on loaded string
+    // save a single GUI value to a json obj. 'name' is already the main index of param.name
+    json to_json() {
+        json j;
+        j["type"] = tools::toString(type);
 
-    void to_json(json& j, const GUIParam& p) {
-        j["name"] = p.name;
-        j["type"] = tools::toString(p.type);
-
-        switch (p.type) {
-        case ParamType::Float:  j["value"] = *(float*)p.paramPtr; break;
-        case ParamType::Int:    j["value"] = *(int*)p.paramPtr; break;
-        case ParamType::Bool:   j["value"] = *(bool*)p.paramPtr; break;
-        case ParamType::String:j["value"] = *(string*)p.paramPtr; break;
+        switch (type) {
+        case ParamType::Float:  j["value"] = *(float*)paramPtr; break;
+        case ParamType::Int:    j["value"] = *(int*)paramPtr; break;
+        case ParamType::Bool:   j["value"] = *(bool*)paramPtr; break;
+        case ParamType::String:j["value"] = *(string*)paramPtr; break;
         }
+
+        return j;
     }
 
     void from_json(const json& j, GUIParam& p) {

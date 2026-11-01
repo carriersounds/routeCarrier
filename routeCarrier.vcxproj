@@ -151,10 +151,13 @@
     <ClCompile Include="..\..\..\Libraries\imgui-node-editor\imgui_canvas.cpp" />
     <ClCompile Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor.cpp" />
     <ClCompile Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor_api.cpp" />
+    <ClCompile Include="source\AudioApplicationNode.cpp" />
+    <ClCompile Include="source\AudioLoopbackNode.cpp" />
     <ClCompile Include="source\AudioDeviceNode.cpp" />
     <ClCompile Include="source\AudioEffects.cpp" />
     <ClCompile Include="source\AudioEngine.cpp" />
     <ClCompile Include="source\AudioNodes.cpp" />
+    <ClCompile Include="source\AudioPresets.cpp" />
     <ClCompile Include="source\AudioVisualizerNode.cpp" />
     <ClCompile Include="source\FileIO.cpp" />
     <ClCompile Include="source\GUI.cpp" />
@@ -195,10 +198,13 @@
     <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_extra_math.h" />
     <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor.h" />
     <ClInclude Include="..\..\..\Libraries\imgui-node-editor\imgui_node_editor_internal.h" />
+    <ClInclude Include="source\AudioApplicationNode.h" />
+    <ClInclude Include="source\AudioLoopbackNode.h" />
     <ClInclude Include="source\AudioDeviceNode.h" />
     <ClInclude Include="source\AudioEffects.h" />
     <ClInclude Include="source\AudioEngine.h" />
     <ClInclude Include="source\AudioNodes.h" />
+    <ClInclude Include="source\AudioPresets.h" />
     <ClInclude Include="source\AudioVisualizerNode.h" />
     <ClInclude Include="source\external\nlohmann-json\json.hpp" />
     <ClInclude Include="source\external\nlohmann-json\json_fwd.hpp" />

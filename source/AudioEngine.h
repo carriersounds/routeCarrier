@@ -8,39 +8,33 @@
 #include "AudioNodes.h"
 #include "AudioEffects.h"
 #include "AudioVisualizerNode.h"
+#include "AudioPresets.h"
+
+#include "AudioApplicationNode.h"
 
 class Program;
 
 /*
 TODO:
-- BUG: multiple outputs will still drift -> small crackling will build up
-- Actual sample rate conversion
-- proper fifo management
 - Create full channel strip, modular effects, working effects, processdoubler?
-    - compressor
-    - simple channel strip
-    - waveform visualizer per link
-   ? - drag link up/down to set gain for that copy stage, buffer write operations = gain included always
+   - drag link up/down to set gain for that copy stage, buffer write operations = gain included always
+
+   - Application audio stream input !! just like OBS
 
 later: 
 - save preset
 - make sure you can't make the same link >1 times
 - ability to choose ASIO (like pioneer ddj for routing)
+- move log of block creation to node constructor
+- only switch case is the template for creation, rest can do with get blocktype
 
 
 
+PRESET:
 
-
-
- NEW TODO:
-
- - move log of block creation to node constructor
- - only switch case is the template for creation, rest can do with get blocktype
-
+Audio Engine controls 
 
 */
-
-
 
 class AudioEngine {
 public:
@@ -52,8 +46,6 @@ public:
     juce::WaitableEvent requestNewAudioBlock;       // from main output
     
     atomic<bool> enableRouting;
-     
-
 
     // Identifiers
     DeviceNode nullDevice;                                      // no input, no output, just for namecheck 
@@ -62,7 +54,8 @@ public:
     vector<NodeID> sortedNodes;                                 // input for topological sort
     std::map<LinkID, BlockLink> links;                          // main interface for generating and deleting links
     std::map<PinID, NodeID> m_PinNodePairs;                     // first = pinID, second = corresponding node ID
-    
+       
+    AppCaptureNode application;
 
     struct FifoData {
         FifoData() { avgFill = 0; totFill = 0; ratio = 1; }
@@ -73,9 +66,9 @@ public:
     std::map<NodeID, FifoData> fifoLevels;                          // for metering buffers
 
     // Node Interface
-    NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName, NodeID PresetNodeID = 0);   // preset       // choose input or output, returns next ID
-    NodeID addNewDSPNode(BlockType typeOfEffect, NodeID PresetNodeID = 0);                               // preset       // effects = enum in function input, return is for GUI i think?   
-    void createLink(node::PinId leftPin, node::PinId rightPin, LinkID presetID = 0);                      // preset  
+    NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName, NodeID PresetNodeID = 0);  // preset    // choose input or output, returns next ID
+    NodeID addNewDSPNode(BlockType typeOfEffect, NodeID PresetNodeID = 0);                               // preset    // effects = enum in function input, return is for GUI i think?   
+    void createLink(node::PinId leftPin, node::PinId rightPin, LinkID presetID = 0);                     // preset  
     void deleteNode(NodeID deviceID);                                             
     void deleteLink(LinkID linkID);                                                                                           
     void breakAllLinks(NodeID node);                                            
@@ -86,7 +79,7 @@ public:
     float engineProcessTimeMs = 0;
 
 
-
+    
 
 private:
 

@@ -3,6 +3,7 @@
 #include "AudioEffects.h"
 #include "AudioDSPNode.h"
 #include <windowsx.h>
+#include <audioclientactivationparams.h>
 
 GUI::GUI(Program* prog) : prog(prog){
 
@@ -684,42 +685,42 @@ void GUI::renderLog()
 
 void GUI::renderToolbar() {
 
-    ImGui::Begin("Toolbar");
     /*
     Drag & Drop toolbar.
     You can either press a Button to add it at a "default" position
-    Drag the Button onto the graph to place it at a specific location       
+    Drag the Button onto the graph to place it at a specific location
     */
 
     BlockType dropper = BlockType::NullDevice;
     static bool showOldFX = false;
+    const int fxAmount = 5;
+    const BlockType fx[fxAmount] =  { BlockType::ChannelUtil,
+                                      BlockType::EQ,
+                                      BlockType::Compressor,
+                                      BlockType::Saturator,
+                                      BlockType::Reverb };
 
+    const char* fxNames[fxAmount] = { "Channel Utility", 
+                                      "Graphic EQ",
+                                      "Compressor",
+                                      "Saturator",
+                                      "Reverb" };
 
+    ImGui::Begin("Toolbar");
     ImGui::SeparatorText("Audio Effects");
     ImGui::Dummy({ 5,5 });
 
-    if (ImGui::Button("Channel Utility")) prog->audio.addNewDSPNode(BlockType::ChannelUtil);
-    tools::ImDragDropMacro(dropper, BlockType::ChannelUtil);
+    // Handle Drag & Drop and Button for FX
+    for (int i = 0; i < fxAmount; i++) {
+        if (ImGui::Button(fxNames[i])) prog->audio.addNewDSPNode(fx[i]);
+        tools::ImDragDropMacro(dropper,fx[i]);
+        if (!(i%2) && i != fxAmount-1) ImGui::SameLine();
+    }
 
-    ImGui::SameLine();
-    if (ImGui::Button("Graphic EQ")) prog->audio.addNewDSPNode(BlockType::EQ);
-    tools::ImDragDropMacro(dropper, BlockType::EQ);
-
-    if (ImGui::Button("Compressor")) prog->audio.addNewDSPNode(BlockType::Compressor);
-    tools::ImDragDropMacro(dropper, BlockType::Compressor);
-
-    ImGui::SameLine();
-    if (ImGui::Button("Saturator")) prog->audio.addNewDSPNode(BlockType::Saturator);
-    tools::ImDragDropMacro(dropper, BlockType::Saturator);
-
-    if (ImGui::Button("Reverb")) prog->audio.addNewDSPNode(BlockType::Reverb);
-    tools::ImDragDropMacro(dropper, BlockType::Reverb);
-   
-
+    ImGui::Dummy({ 5,5 });
+    ImGui::Separator();
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.11f, 0.23f, 0.34f, 0.3f));
-
     ImGui::Dummy({ 10,2 });
-
     tools::toggleButton("Show Old FX", showOldFX);
 
     if (showOldFX) {
@@ -736,37 +737,35 @@ void GUI::renderToolbar() {
     ImGui::Separator();
     ImGui::Dummy({ 5,2 });
 
+
+
+    prog->audio.application.drawImGui();
+
+
+    ImGui::NewLine();
+    ImGui::Separator();
+    ImGui::NewLine();
+
+
+    // Draw HW Devices
     static auto& deviceTypes = prog->audio.nullDevice.deviceManager.getAvailableDeviceTypes();
-    
-
     int itemType = 0;
-
     vector<const char *> devs;
-
-    for (size_t i = 0; i < deviceTypes.size(); i++)
-    {
+    for (size_t i = 0; i < deviceTypes.size(); i++)   
         devs.push_back(deviceTypes[i]->getTypeName().toRawUTF8());
-    }
-    
-
+      
     if (ImGui::BeginCombo("Audio Driver", devs[itemType])) {
-
-        for (size_t i = 0; i < deviceTypes.size(); i++) {
-           
+        for (size_t i = 0; i < deviceTypes.size(); i++) {       
             const bool is_selected = (itemType == i);
             if (ImGui::Selectable(devs[i], is_selected))
                 itemType = i;
-
-        }
-       
+        }      
         ImGui::EndCombo();
     }
     
     static juce::AudioIODeviceType* type = deviceTypes.getFirst();                                      // takes WASAPI, maybe check for Low Latency?
-
     static juce::StringArray inputs;
     static juce::StringArray outputs;
-
 
     // update audio device list every 2 seconds or on a button press
     if ((ImGui::GetFrameCount() % 120) == 0) {
@@ -774,7 +773,6 @@ void GUI::renderToolbar() {
         inputs = type->getDeviceNames(true);    // true = input
         outputs = type->getDeviceNames(false);  // false = output
     }
-
 
     ImGui::SeparatorText("Input Devices");
     ImGui::NewLine();
@@ -859,7 +857,7 @@ void GUI::renderMixPanel() {
 
     if (ImGui::Button("Clear Screen")) ClearScreen = true;
 
-
+    // Begin Node Context
     node::SetCurrentEditor(node_Context);
     node::Begin("editore", ImVec2(0.0, 0.0f));
 
@@ -883,8 +881,9 @@ void GUI::renderMixPanel() {
 
             node::SetNodePosition(nodeToGiveInitPosition, ImGui::GetMousePos()); //once, to make sure it drops on the right spot!
         }
-        DragDropisHovered = true;
 
+        // Render empty node as drag preview
+        DragDropisHovered = true;
         ImGui::EndDragDropTarget();
         node::BeginNode(999);
         ImGui::Dummy({200,100});
@@ -897,7 +896,7 @@ void GUI::renderMixPanel() {
     for (auto& [ID,node] : prog->audio.nodes) node->renderAsNode(pinSize, spacing);           
     
     // Draw Links
-    for (auto& link : prog->audio.links) node::Link(link.second.ID, link.second.ID_left, link.second.ID_right);
+    for (auto& [ID,link] : prog->audio.links) node::Link(link.ID, link.ID_left, link.ID_right);
     
     // Query link creation
     if (node::BeginCreate())                                            // GRAB PIN
@@ -951,11 +950,12 @@ void GUI::renderMixPanel() {
             }
     }
 
+    // node::HasAnyLinks() can only be called inside a node::begin/end context (at delete ?)
     if (ClearScreen) {
-        prog->audio.clearAll();     // "hasanylinks" can only be called inside a node::begin/end context
-        ClearScreen = false;
+        prog->audio.clearAll();     // DeleteNode() > BreakAllLinks() > HasAnyLinks()                                   
+        ClearScreen = false;        
     }
-
+    
     node::EndDelete();
     node::EndCreate();
 
@@ -973,7 +973,6 @@ void GUI::renderMixPanel() {
         menuOpen = false;
     }
     
-
     node::SetCurrentEditor(nullptr);
     ImGui::End();
 }
@@ -987,6 +986,7 @@ void GUI::renderDeviceList() {
     static juce::StringArray outputs;
 
     ImGui::Begin("Devices");
+
     // update audio device list every 2 seconds or on a button press
     if (ImGui::Button("refresh list") || (ImGui::GetFrameCount() % 120) == 0) {
         type->scanForDevices();                 // must call to populate names
@@ -997,27 +997,24 @@ void GUI::renderDeviceList() {
     ImGui::MenuItem("Inputs");
     ImGui::Separator();
 
-    for (auto& s : inputs) {
+    for (auto& s : inputs) 
         if (ImGui::MenuItem(("IN: " + s.toStdString()).c_str())) {
             juce::String chosenInput(s);
             prog->audio.addNewDeviceNode(BlockType::InputDevice, chosenInput);
         }
-    }
-
+    
     ImGui::Separator();
 
     ImGui::MenuItem("Outputs");
     ImGui::Separator();
 
-    for (auto& s : outputs) {
+    for (auto& s : outputs) 
         if (ImGui::MenuItem(("OUT: " + s.toStdString()).c_str())) {
             juce::String chosenOutput(s);
             NodeID next_ID = prog->audio.addNewDeviceNode(BlockType::OutputDevice, chosenOutput);
 
         }
-
-    }
-
+    
     ImGui::End();
 }
 

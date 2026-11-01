@@ -1,0 +1,26 @@
+{
+ "DistType": {
+  "name": "DistType",
+  "type": "int",
+  "value": 0
+ },
+ "DryWet": {
+  "name": "DryWet",
+  "type": "float",
+  "value": 1.0
+ },
+ "InputGain": {
+  "name": "InputGain",
+  "type": "float",
+  "value": 0.0
+ },
+ "OutputGain": {
+  "name": "OutputGain",
+  "type": "float",
+  "value": 0.0
+ },
+ "id": 0,
+ "type": 0,
+ "x": 0.0,
+ "y": 0.0
+}The program '[26496] routeCarrier.exe' has exited with code 0 (0x0).

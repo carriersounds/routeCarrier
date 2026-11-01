@@ -47,16 +47,14 @@ void AudioEngine::run() {
                 nodes.at(node)->sendAudioToNextNodes(); // mix audio into nodes linked to this->output
             }
 
-            for (auto& [id, node] : nodes) 
+            for (auto& [id, node] : nodes) {
                 if (fifoLevels.contains(id)) {
                     auto* devNode = dynamic_cast<DeviceNode*>(node.get());
                     fifoLevels[id].avgFill = devNode->avgFill;
                     fifoLevels[id].totFill = devNode->currentFill;
                     fifoLevels[id].ratio = devNode->SRC_ratio * 1000.0f;
-
                 }
-            
-
+            }
         }
         engineProcessTimeMs = processClock.getDuration() / 1000.0f;
         nodeLock.unlock();
@@ -127,21 +125,18 @@ void AudioEngine::calculateSends(LinkID newlink) {
 
 void AudioEngine::topologicalSortNodes() {
 
-    std::map<NodeID, vector<NodeID>>& adj = sends;
-
-    int n = adj.size();
+    int n = sends.size();
     std::map<NodeID, int> indegree;
     std::queue<NodeID> q;
     vector<NodeID> list;
 
     // Compute indegrees
-    for (auto& outs : adj) {
+    for (auto& outs : sends) {
         for (auto& singleOutput : outs.second)      // for all outgoing links of ID
             indegree[singleOutput]++;
     }
 
-    // Add all nodes with indegree 0 
-    // into the queue
+    // Add all nodes with indegree 0 into the queue
     for (auto& degNode : nodes)
         if (indegree[degNode.first] == 0)
             q.push(degNode.first);
@@ -152,7 +147,7 @@ void AudioEngine::topologicalSortNodes() {
         q.pop();
         list.push_back(top);
 
-        for (auto& nextID : adj[top]) {
+        for (auto& nextID : sends[top]) {
             indegree[nextID]--;
             if (indegree[nextID] == 0)      // nodes involved in feedback loops will never reach degree zero and will not be added to sortedNodes
                 q.push(nextID);
@@ -284,7 +279,7 @@ NodeID AudioEngine::addNewDSPNode(BlockType typeOfEffect, NodeID presetNodeID) {
     m_PinNodePairs.emplace(inputPinID, blockID);                             // save pin assignment in LUT
     m_PinNodePairs.emplace(outputPinID, blockID);
 
-    topologicalSortNodes();                                                  // simply to add to sortedNodes
+    topologicalSortNodes();                                                  // to add to sortedNodes
 
     return blockID;
 }

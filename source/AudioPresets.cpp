@@ -24,27 +24,4 @@ string NodePreset::saveCurrentState() {
 
 
 // save whole node as 1 big json obj incl settings. assumes all member vars have been set already
-json NodePreset::SaveNodeToJson() {
-
-    // id = 
-
-    json j;
-    j = {
-        {"id", id},
-        {"type", type},
-        {"x", posX},
-        {"y", posY}
-    };
-
-    for (auto& param : params) {
-        j[param.name] = param.to_json();
-    }
-
-
-    string dinges = j.dump(1);
-
-    OutputDebugStringA(dinges.c_str());
-
-    return j;
-}
 

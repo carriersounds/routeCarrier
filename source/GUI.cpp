@@ -436,9 +436,9 @@ void GUI::renderMenuBar() {
     if (ImGui::BeginMainMenuBar()) {
 
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open Image", "Ctrl + O")) prog->selectFile(f_openDialog, f_openFile, f_current, recursiveLoad);
+            if (ImGui::MenuItem("Open Image", "Ctrl + O"));//prog->selectFile(f_openDialog, f_openFile, f_current, recursiveLoad);
             ImGui::SetItemTooltip("Load and view image");
-            if (ImGui::MenuItem("Open Folder", "Ctrl + F")) prog->selectFile(f_openDialog, f_openFolder, f_current, recursiveLoad);
+            if (ImGui::MenuItem("Open Folder", "Ctrl + F"));//prog->selectFile(f_openDialog, f_openFolder, f_current, recursiveLoad);
             ImGui::SetItemTooltip("Load and view image");
             ImGui::Separator();
 
@@ -449,8 +449,9 @@ void GUI::renderMenuBar() {
             }
 
             ImGui::Separator();
-            if (ImGui::MenuItem("Save Current Image", "Ctrl + S")) prog->fileIO.manualSaveFile(0);
-            if (ImGui::MenuItem("Save as...", "Ctrl + Shift + S")) prog->fileIO.manualSaveFile(1);
+            if (ImGui::MenuItem("Save Current Image", "Ctrl + S"));
+            if (ImGui::MenuItem("Save as...", "Ctrl + Shift + S"));
+
             ImGui::SetItemTooltip("Save currently shown image\nSelect View > Binarized to save thresholded image");
 
             if (ImGui::BeginMenu("Default save directory")) {

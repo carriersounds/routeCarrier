@@ -9,6 +9,7 @@
 #include <chrono>
 #include <excpt.h>
 #include <ShObjIdl.h>   // file dialogs
+#include <shlobj.h>
 #include <queue>
 #include <vector>
 #include <cstring>
@@ -22,6 +23,8 @@
 #include <format>
 #include <map>
 #include <memory>
+#include <Psapi.h>
+#include <comutil.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"                      // modified for extra imvec2 math operators
@@ -33,8 +36,7 @@
 #include "imgui\node-editor\imgui_node_editor.h"
 #include "imgui-knobs.h"                                                // modified to accept ID## without printing numbers
 #include "external\libsamplerate-0.2.2-win64\include\samplerate.h"
-#include "external\nlohmann-json\json_fwd.hpp"
-#include "external\nlohmann-json\json.hpp"
+
 #define JUCE_ASIO
 #include <JuceHeader.h>
 namespace ed = ax::NodeEditor;
@@ -57,6 +59,7 @@ using namespace std::literals::chrono_literals;
 
 using std::vector;
 using std::string;
+using std::wstring;
 using std::memcpy;
 using std::to_string;
 using std::thread;
@@ -64,7 +67,7 @@ using std::chrono::high_resolution_clock;
 using std::atomic;
 using std::unique_ptr;
 using std::make_unique;
-using nlohmann::json;
+
 
 using timepoint = std::chrono::high_resolution_clock::time_point ;
 using LinkID = size_t;
@@ -98,6 +101,70 @@ enum ParamType {
 
 
 namespace tools {
+
+    inline std::string WideToStdString(const wstring& w) {
+        return { w.begin(),w.end() };
+    }
+
+    inline wstring StringToWide(const std::string& s) {
+        return { s.begin(),s.end() };
+    }
+
+    inline HWND FindTopLevelWindowByProcessName(const std::string& targetProcessName) {
+        HWND hwnd = GetTopWindow(NULL);  // Start with the topmost window
+
+        while (hwnd) {
+            // Get the process ID for this window
+            DWORD processId;
+            GetWindowThreadProcessId(hwnd, &processId);
+
+            // Get the process name
+            HANDLE processHandle = OpenProcess(
+                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                FALSE,
+                processId
+            );
+
+            if (processHandle) {
+                char filename[MAX_PATH];
+                if (GetModuleFileNameExA(processHandle, NULL, filename, MAX_PATH)) {
+                    // Extract just the filename
+                    std::string processName(filename);
+                    size_t lastSlash = processName.find_last_of("\\");
+                    if (lastSlash != std::string::npos) {
+                        processName = processName.substr(lastSlash + 1);
+                    }
+                    // Check for exact match
+                    if (processName == targetProcessName) {
+                        CloseHandle(processHandle);
+                        return hwnd;  // Found it!
+                    }
+                }
+                CloseHandle(processHandle);
+            }
+
+            // Move to next window in Z-order
+            hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
+        }
+
+        return NULL;  // Not found
+    }
+
+    inline string to_string_float(float val, int afterComma = 2) {
+
+        switch (afterComma) {
+        case 0: return std::format("{:.0f}", val); break;
+        case 1: return std::format("{:.1f}", val); break;
+        case 2: return std::format("{:.2f}", val); break;
+        case 3: return std::format("{:.3f}", val); break;
+        case 4: return std::format("{:.4f}", val); break;
+        case 5: return std::format("{:.5f}", val); break;
+        case 6: return std::format("{:.6f}", val); break;
+        case 7: return std::format("{:.7f}", val); break;
+        default: return std::format("{:.2f}", val); break;
+        }
+    };
+
 
     inline std::string toString(ParamType t) {
         switch (t) {
@@ -323,265 +390,8 @@ namespace tools {
         // on the parameters first before flagging the parameters as changed to the processor
     }
 
-    // Custom GUI Elements - helper functions
-
-    inline void drawGradientBackground(ImDrawList* drwList, const char* label, ImRect bb, bool button, bool pressed, bool hovered) {
-        // Call directly after "begin" to set as background
-        ImU32 colTop;
-        ImU32 colBottom;
-
-        // button
-        const ImVec4 outlineColorBase = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-        ImU32 colOutline = ImGui::GetColorU32(outlineColorBase);
-        float rounding = 4.0f;
-        float thickness = 2.0f; // 2-pixel thickness for the border
-
-
-        if (!button) {
-            colTop = IM_COL32(4, 16, 7, 255);
-            colBottom = IM_COL32(72, 76, 74, 255);
-        }
-        else {
-            colTop = IM_COL32(72, 76, 74, 255);
-            colBottom = IM_COL32(4, 16, 7, 255);
-        }
-
-        // hover and press handler
-        if (button) {
-            float pressFactor = 1.8f; // Slightly darker when pressed
-            float hoverFactor = 1.2f; // Slightly brighter when hovered
-
-            // adjust the outline color based on hover/press state if desired
-            if (pressed) {
-                // Example: Make the outline BRIGHT YELLOW when pressed
-                colOutline = ImGui::GetColorU32(ImVec4(0.9f, 0.9f, 0.7f, 1.0f));
-            }
-            else if (hovered) {
-                // Example: Make the outline YELLOW when hovered
-                colOutline = ImGui::GetColorU32(ImVec4(0.8f, 0.8f, 0.0f, 1.0f));
-            }
-        }
-
-        // 4. Draw Background
-        drwList->AddRectFilledMultiColor(
-            bb.Min,
-            bb.Max,
-            colBottom, // Color Top-Left (actually the bottom of the gradient)
-            colBottom, // Color Top-Right
-            colTop,    // Color Bottom-Right (actually the top of the gradient)
-            colTop    // Color Bottom-Left
-        );
-
-        // 4.1 Draw Outline (if button)
-        if (button) {
-            drwList->AddRect(
-                bb.Min,
-                bb.Max,
-                colOutline,
-                rounding,
-                ImDrawFlags_None, // Flags (can be used to specify sides)
-                thickness
-            );
-        }
-
-    }
-
-    inline void drawAnalogDial_3sections(const char* name, float ranges[], float value, ImVec2 plotSize, bool reverseColors) {
-
-        const char* labels1[] = { "Section 1","Section 2","Section 3" };
-        static ImPlotColormap stopLight = -1;
-        static ImPlotColormap blackBG;
-        static float radius = 0.4f;
-        static ImVec2 center = { 0.5f,0.5f };
-        static float angle0 = -135;
-
-        // Color map
-        if (stopLight == -1) {
-            ImU32 stopLight_data[3] = { IM_COL32(0, 255, 0, 255), IM_COL32(200, 200, 0, 255), IM_COL32(255, 0, 0, 255) };
-            if (reverseColors) {
-                ImU32 temp = stopLight_data[0];
-                stopLight_data[0] = stopLight_data[2];
-                stopLight_data[2] = temp;
-            }
-            stopLight = ImPlot::AddColormap("stoplight", stopLight_data, 3);
-
-            ImU32 blegh[] = { IM_COL32(10, 10, 10, 255),IM_COL32(10, 10, 10, 255) };
-
-            blackBG = ImPlot::AddColormap("black", blegh, 2);
-
-        }
-
-        if (ImPlot::BeginPlot(name, plotSize, ImPlotFlags_Equal | ImPlotFlags_CanvasOnly | ImPlotFlags_NoTitle | ImPlotFlags_NoMouseText | ImPlotFlags_NoLegend)) {
-            ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
-            ImPlot::SetupAxesLimits(0, 1, 0, 1, ImPlotCond_Always);
-            float plot_converted_angle0 = angle0 + 90;
-
-            ImPlot::PushColormap("stoplight");
-            ImPlot::PlotPieChartAsDial(labels1, ranges, 3, center.x, center.y, radius, "%.2f", plot_converted_angle0);
-            ImPlot::PopColormap();
-
-            ImPlot::PushColormap("black");
-            const char* dumby[] = { "1","2" };
-            static float dumval[] = { 0.5f,0.5f };
-            ImPlot::PlotPieChart(dumby, dumval, 2, center.x, center.y, radius * 0.8f, " ", 0, ImPlotPieChartFlags_Normalize);
-            ImPlot::PopColormap();
-
-            float start_angle_radians = angle0 * 2.0f * IM_PI / 360.0f;
-
-            // Text markers
-            for (int i = 0; i < 4; ++i) {
-                const float percent = ranges[i] / ranges[3]; // value over max   (float 0 - 1)
-                float angle = start_angle_radians - (IM_PI * 1.5f * percent); // MINUS BECAUSE ITS INVERTED                   
-                ImVec2 pos = { center.x + radius * 1.15f * cos(angle), center.y + radius * 1.15f * sin(angle) };   // polar to cartesian
-                string plottertext = std::format("{:.0f}", ranges[i]);
-                ImPlot::PlotText(plottertext.data(), pos.x, pos.y);
-            }
-            ImVec2 titlePos = { center.x,center.y - (radius * 0.5f) };
-            ImPlot::PlotText(name, titlePos.x, titlePos.y);
-
-            ImVec2 lineVectorPoint;
-            float v_Percent = value / ranges[3];
-            float v_Angle = start_angle_radians - (IM_PI * 1.5f * v_Percent);
-            lineVectorPoint = { center.x + radius * cos(v_Angle), center.y + radius * sin(v_Angle) };
-            float Xs[] = { center.x,lineVectorPoint.x };
-            float Ys[] = { center.y,lineVectorPoint.y };
-            ImPlot::SetNextLineStyle(ImVec4(255, 255, 255, 255), 4.0f);
-            ImPlot::PlotLine("CV", Xs, Ys, 2, ImPlotLineFlags_Segments);
-            ImPlot::EndPlot();
-        }
-
-    }
-
-    inline void drawAnalogDial_5sections(const char* name, float ranges[], float value, ImVec2 plotSize) {
-
-        const char* labels5[] = { "Section 1","Section 2","Section 3", "Section 4", "Section 5" };
-        static ImPlotColormap stopLight5 = -1;
-        static ImPlotColormap blackBG5;
-        static float radius = 0.4f;
-        static ImVec2 center = { 0.5f,0.5f };
-        static float angle0 = -135;
-
-        // Color map
-        if (stopLight5 == -1) {
-            ImU32 stopLight_data[5] = { IM_COL32(255, 0, 0, 255),IM_COL32(200, 200, 0, 255),IM_COL32(0, 255, 0, 255), IM_COL32(200, 200, 0, 255), IM_COL32(255, 0, 0, 255) };
-
-            stopLight5 = ImPlot::AddColormap("stoplight5", stopLight_data, 5);
-
-            ImU32 blegh[] = { IM_COL32(10, 10, 10, 255),IM_COL32(10, 10, 10, 255) };
-            blackBG5 = ImPlot::AddColormap("black5", blegh, 2);
-
-        }
-
-        if (ImPlot::BeginPlot(name, plotSize, ImPlotFlags_Equal | ImPlotFlags_CanvasOnly | ImPlotFlags_NoTitle | ImPlotFlags_NoMouseText | ImPlotFlags_NoLegend)) {
-            ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
-            ImPlot::SetupAxesLimits(0, 1, 0, 1, ImPlotCond_Always);
-            float plot_converted_angle0 = angle0 + 90;
-
-            ImPlot::PushColormap("stoplight5");
-            ImPlot::PlotPieChartAsDial(labels5, ranges, 5, center.x, center.y, radius, "%.2f", plot_converted_angle0);
-            ImPlot::PopColormap();
-
-            ImPlot::PushColormap("black5");
-            const char* dumby[] = { "1","2" };
-            static float dumval[] = { 0.5f,0.5f };
-            ImPlot::PlotPieChart(dumby, dumval, 2, center.x, center.y, radius * 0.8f, " ", 0, ImPlotPieChartFlags_Normalize);
-            ImPlot::PopColormap();
-
-            float start_angle_radians = angle0 * 2.0f * IM_PI / 360.0f;
-
-            // Text markers
-            for (int i = 0; i < 6; ++i) {
-                const float percent = ranges[i] / ranges[5]; // value over max   (float 0 - 1)
-                float angle = start_angle_radians - (IM_PI * 1.5f * percent); // MINUS BECAUSE ITS INVERTED                   
-                ImVec2 pos = { center.x + radius * 1.15f * cos(angle), center.y + radius * 1.15f * sin(angle) };   // polar to cartesian
-                string plottertext = std::format("{:.0f}", ranges[i]);
-                ImPlot::PlotText(plottertext.data(), pos.x, pos.y);
-            }
-            ImVec2 titlePos = { center.x,center.y - (radius * 0.5f) };
-            ImPlot::PlotText(name, titlePos.x, titlePos.y);
-
-            ImVec2 lineVectorPoint;
-            float v_Percent = value / ranges[5];
-            float v_Angle = start_angle_radians - (IM_PI * 1.5f * v_Percent);
-            lineVectorPoint = { center.x + radius * cos(v_Angle), center.y + radius * sin(v_Angle) };
-            float Xs[] = { center.x,lineVectorPoint.x };
-            float Ys[] = { center.y,lineVectorPoint.y };
-            ImPlot::SetNextLineStyle(ImVec4(255, 255, 255, 255), 4.0f);
-            ImPlot::PlotLine("CV", Xs, Ys, 2, ImPlotLineFlags_Segments);
-            ImPlot::EndPlot();
-        }
-
-    }
 }
 
-struct GUIParam {
-    GUIParam(const string& name, void* ptr, ParamType type) :
-        name(name), paramPtr(ptr), type(type) {
-    }
-
-    string name;
-    void* paramPtr;
-    ParamType type;
-
-    // dereference and save to string
-    string saveParamValue() {
-        switch (type)
-        {
-        case ParamType::Float: {
-            float* cast = (float*)paramPtr;
-            return to_string(*cast);
-        }
-                        break;
-        case ParamType::Int: {
-            int* cast = (int*)paramPtr;
-            return to_string(*cast);
-        }
-                      break;
-        case ParamType::Bool: {
-            bool* cast = (bool*)paramPtr;
-            return to_string(*cast);
-        }
-                       break;
-        case ParamType::String: {
-            string* cast = (string*)paramPtr;
-            return *cast;
-        }
-                         break;
-        default:
-            break;
-        }
-
-
-    }
-
-    // save a single GUI value to a json obj. 'name' is already the main index of param.name
-    json to_json() {
-        json j;
-        j["type"] = tools::toString(type);
-
-        switch (type) {
-        case ParamType::Float:  j["value"] = *(float*)paramPtr; break;
-        case ParamType::Int:    j["value"] = *(int*)paramPtr; break;
-        case ParamType::Bool:   j["value"] = *(bool*)paramPtr; break;
-        case ParamType::String:j["value"] = *(string*)paramPtr; break;
-        }
-
-        return j;
-    }
-
-    void from_json(const json& j, GUIParam& p) {
-        p.name = j["name"];
-        p.type = tools::fromString(j["type"]);
-
-        switch (p.type) {
-        case ParamType::Float:  *(float*)p.paramPtr = j["value"]; break;
-        case ParamType::Int:    *(int*)p.paramPtr = j["value"]; break;
-        case ParamType::Bool:   *(bool*)p.paramPtr = j["value"]; break;
-        case ParamType::String:*(string*)p.paramPtr = j["value"]; break;
-        }
-    }
-
-};
 
 
 struct BlockLink {

@@ -469,8 +469,6 @@ void Saturator::renderInterface(float nodeW) {
 
         INDENT_NEXT
 
-
-
         if (ImGuiKnobs::Knob(("Input Gain##" + to_string(ID)).c_str(), &inputGainDB, -24, 48, 0.2f, "%.2f dB", ImGuiKnobVariant_WiperOnly)) isChanged = true;
         ifDoubleClicked{ (inputGainDB = 0.0f); isChanged = true; }
        
@@ -478,6 +476,8 @@ void Saturator::renderInterface(float nodeW) {
         ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.11f, 0.43f, 0.54f, 1.0f));
 
         ImGui::TableNextColumn();
+
+        ImGui::Indent(10);
         INDENT_NEXT
         if (ImGui::RadioButton(("SoftClip##" + to_string(ID)).c_str(), &distortionType, 0)) isChanged = true;
         INDENT_NEXT
@@ -488,6 +488,8 @@ void Saturator::renderInterface(float nodeW) {
         if (ImGui::RadioButton(("Diode##" + to_string(ID)).c_str(), &distortionType, 3)) isChanged = true;
         INDENT_NEXT
         if (ImGui::RadioButton(("Cubed Sine##" + to_string(ID)).c_str(), &distortionType, 4)) isChanged = true;
+
+        ImGui::Unindent();
 
         ImGui::PopStyleColor(2);
 
@@ -500,7 +502,7 @@ void Saturator::renderInterface(float nodeW) {
         INDENT_NEXT
         if (ImGuiKnobs::Knob(ADD_ID("Dry/Wet##"), &dryWetMix, 0, 1, 0.0f, "%.2f", ImGuiKnobVariant_WiperOnly)) isChanged = true;
         
-        if (ImGui::Button("save")) currentState.SaveNodeToJson();
+        if (ImGui::Button("save")) ;
 
         ImGui::TableNextColumn();
         

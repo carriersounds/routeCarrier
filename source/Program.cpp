@@ -17,23 +17,7 @@ Program::Program() : gui(this), fileIO(this),audio(this){
 }
 
 
-void Program::selectFile(bool openNewDialog, bool folder, int action, int recursive, string extFileLoad) {
 
-    if (openNewDialog == f_openDialog) fileIO.selectFile(folder, recursive);
-
-    if (extFileLoad != "")  fileIO.selectFile(f_openFile, 0, false, extFileLoad);
-
-    if (action != f_current) {
-        if (action == f_next) fileIO.currentAudioFile--;
-        if (action == f_previous) fileIO.currentAudioFile++;
-    }
-
-    if (!fileIO.amtAudioFilesLoaded || !fileIO.allFilesInScope.size()) return;  // don't merge if there's no images loaded
-
-    //fileIO.mergeImageAndDefects();              // actual pixel loading happens here, merge with .vvr (blob) data  
-   // fileIO.sendToProgram(reProcessLoadedImage); // 1 = send to procThread, 0 = send to GUI only
-
-}
 
 Program::~Program() {
     

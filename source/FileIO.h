@@ -1,9 +1,21 @@
 #pragma once
 #include "mainHeader.hpp"
+#include <wrl/client.h>
+#include <coml2api.h>       
+#include <objidl.h>
+#include <combaseapi.h>
+#include <windows.h>
 #include <commdlg.h>
+#include <objbase.h>  
+#include <msxml6.h> 
+
+#include "AudioPresets.h"
+
+using std::filesystem::path;
 
 class Program;
 class AudioNode;
+
 
 class FileIO {
 
@@ -11,40 +23,54 @@ public:
 
     FileIO(Program* input);
 
-    // struct setup in separate file
-    // saveConfig(Setup& currentSetup);
-    // Setup loadConfig();
-    // maybe give it access to fileIO and build whole structure there
+    // Basic File functions
+    static string           OpenFolderDialog();
+    static string           OpenFileDialog(FileIOFlags filetype = f_audio);
+    static string           saveFileDialog(FileIOFlags filetype = f_audio, path defaultName = "");
+    static void             makeSureDirectoryExists(const path path);
+    static void             deleteDirectoryContents(const path& dir);
+    static vector<string>   glob(const std::string& foldername, bool recursive, bool imagesOnly = true, string LMFFilter = "");
+    static path             getEXEDir();
+    static bool             ShowInExplorer(const std::wstring& filePath);
 
-    // offline saving and loading
-    void selectFile(bool folder, int recursive, bool openDialog = true, string extFileLoad = "");
+    static GlobalPreset     LoadPreset(string path);  // includes saveLast
+    static bool             SavePreset(const GlobalPreset& preset, std::string path); // includes SaveLast
 
-    void manualSaveFile(bool as);   // saving WAVs
+    static string           LoadLastPresetPath(FileIOFlags type);       // includes setting member
+    static bool             SaveLastPresetPath(FileIOFlags type, string path);  // includes setting member
 
+    vector<path>            GetPresetList();
 
-    void savePreset(string path);     // use for PRESETS
-    void loadPreset(string imagepath);
+    // XML Parsing
+    static IXMLDOMDocument2* XmlCreate();
+    static IXMLDOMDocument2* XmlFromString(const std::string& utf8);
+    static IXMLDOMDocument2* XmlFromFile(const std::string& path);
+    static std::string       XmlParseErrorText(IXMLDOMDocument2* xml);
 
-    string OpenFolderDialog();
-    string OpenFileDialog(int filetype = f_audio);
-    string saveFileDialog(int filetype = f_audio);
+    static IXMLDOMNodeList* XmlSelectNodes(IXMLDOMDocument2* xml, const wchar_t* xpath, long& countOut);
+    static IXMLDOMNode* XmlSelectSingle(IXMLDOMDocument2* xml, const wchar_t* xpath);
+    static IXMLDOMNode* XmlNodeAt(IXMLDOMNodeList* list, long index);
 
-    std::filesystem::path getEXEDir();
-    std::filesystem::path EXEpath;
-    std::filesystem::path saveDir;
+    static string            XmlAttr(IXMLDOMNode* node, const wchar_t* attrName);
+    static int               XmlAttrInt(IXMLDOMNode* node, const wchar_t* attrName, int fallback = 0);
+    static float             XmlAttrFloat(IXMLDOMNode* node, const wchar_t* attrName, float fallback = 0.0f);
+    static bool              XmlAttrBool(IXMLDOMNode* node, const wchar_t* attrName, bool fallback = false);
+    static string            XmlEscape(const std::string& text);
+    template<typename T>
+    static T                 XmlAttrValue(IXMLDOMNode* node, const wchar_t* attrName, T fallback) {
+        if constexpr (std::is_same_v<T, int>)   return XmlAttrInt(node, attrName, fallback);
+        if constexpr (std::is_same_v<T, float>) return XmlAttrFloat(node, attrName, fallback);
+    }
 
-    int amtAudioFilesLoaded;
-    int currentAudioFile;
-    vector<string> allFilesInScope;
+    static inline path EXEpath;
+    static inline path saveDir;
+    static inline path AssetsFolder;
+    static inline path PresetFolder;
+    static inline path GlobalFolder;
 
-    string lastSavedAudioFile;
-
-    std::map<string, iconData> icons;      // LRI ICONS
+    static inline path LastPreset;
 
 private:
     Program* prog;
-    static vector<string> glob(const std::string& foldername, bool recursive);
-    vector<string> openAndLoadFiles(bool recursive, bool folder, bool openDialog, string extFileLoad);      // probably use for loading multiple audio files for soundboard
-
-
 };
+

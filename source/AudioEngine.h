@@ -15,11 +15,46 @@
 class Program;
 
 /*
+* 
+NEW TODO 2026:
+
+
+- NodeType: Application audio stream input
+- NodeType: Loopback capture source
+- NodeType: Visualizer (scope / FFT)
+- NodeType: Soundboard/file node (wav/mp3 file handler).
+
+-------------
+New Toolbar:
+    Categories:
+
+    Sources:
+        Soundboard manager
+        Application stream
+        Hardware inputs  
+        Output Loopback   
+
+    Transform:
+        DSP     
+        VST Plugin
+
+    Receivers:
+        Visualizer
+        Hardware Outputs
+        Recorder 
+
+Soundboard manager features:
+
+-- soundboard = saved local wav files, file cutter GUI with waveform? Zoom with scroll
+-- Record soundboard sample from any input/source. for live soundboard creation
+
+- XML preset format (Advanced FileIO)
+
+
 TODO:
 - Create full channel strip, modular effects, working effects, processdoubler?
    - drag link up/down to set gain for that copy stage, buffer write operations = gain included always
-
-   - Application audio stream input !! just like OBS
+    !! just like OBS
 
 later: 
 - save preset

@@ -111,12 +111,12 @@ public:
     float engineClockTimeMs = 0;
     float engineProcessTimeMs = 0;
 
-    GlobalPreset CurrentPreset;
+    void Load(FileIOFlags openDialog = f_noDialog, string path = "");
+    void Save(FileIOFlags openDialog, string path = "");
+
     Program* prog;
     BaseID uniqueID;
 private:
-
-
 
     float mainOutSampleRate = 48000;
 

@@ -7,24 +7,21 @@ class Program;
 class AudioNode;
 class AudioEngine;
 
-
+// Modular interface for the GUI parameters, can be 4 types
 struct GUIParam {
     GUIParam(const string& name, void* ptr, ParamType type) :
         name(name), paramPtr(ptr), type(type) {
     }
-
     string name;
     void* paramPtr;
     ParamType type;
-
-   
     string saveParamValue();                // dereference and save to string (XML format)
 };
 
 class NodePreset {
 
-    // get_to = variable already exists
-    // get  = create new variable <arg=type>
+// Interface for the XML parser. this only holds X/Y location as real data. 
+// All the other node properties are dereferenced or obtained via the master node
 
 public:
     NodePreset(AudioNode* mast) : master(mast) {}
@@ -59,20 +56,6 @@ public:
         params.emplace_back(settingName, setting, ParamType::Bool);
     }
 
-
-};
-
-class GlobalPreset {
-public:
-    GlobalPreset(AudioEngine* engine) : engine(engine) {};
-    AudioEngine* engine;  
-
-    void Load(FileIOFlags openDialog = f_noDialog, string path = "");
-    void Save(FileIOFlags openDialog, string path = "");
-
-    void LoadToEngine();
-
-    // doesnt need own data members, borrows all from audioengine. own data is only stuff the engine doesnt need
 
 };
 

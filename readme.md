@@ -24,7 +24,9 @@ This program is built around a node editor where audio devices can be connected 
 - Asynchronous samplerate conversion thanks to [libsamplerate](https://github.com/libsndfile/libsamplerate)
 - Routing is done via a visual node-based graph system
 - Audio effects as nodes for processing within the graph (VST support coming soon, hopefully)
+- Save & load node/link configurations as presets
 - Click or drag & drop a node from the toolbar to add it to the graph, and connect pins accordingly (hint, hit F on the graph to zoom to your nodes)
+
 
 ## Build & Dependencies
 - Compiled using Visual Studio 2022
@@ -37,7 +39,6 @@ This program is built around a node editor where audio devices can be connected 
 ## Planned features
 - Audio from individual applications as input sources
 - WASAPI Loopback (recording PC outputs)
-- Saving and loading presets 
 - Soundboard / Recorder (audio file I/O)
 - Visualizer nodes (scope / spectrum)
 - More native fx: Multiband, auto-gain, color fx, etc..
@@ -45,4 +46,4 @@ This program is built around a node editor where audio devices can be connected 
 - VST node support, bring your own plugins!
 
 ## AI notice (for those who care)
-Around 90% of the code was written by hand or re-purposed from older projects of mine, and AI tools were mostly used for boilerplate helpers (XML parsing functions).
+Around 90% of the code was written by hand or re-purposed from older projects of mine. AI tools were mostly used for some of the boilerplate file handling.

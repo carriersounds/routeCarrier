@@ -438,17 +438,16 @@ void GUI::renderMenuBar() {
 
             ImGui::Separator();
 
-            if (ImGui::MenuItem("Open Preset")) prog->audio.CurrentPreset.Load(f_openDialog);
-
+            if (ImGui::MenuItem("Save preset")) prog->audio.CurrentPreset.Save(f_noDialog);
             if (ImGui::MenuItem("Save preset as...")) prog->audio.CurrentPreset.Save(f_openDialog);
 
-            if (ImGui::BeginMenu("Vision presets")) {
+            if (ImGui::BeginMenu("Load preset")) {
 
                 if (ImGui::IsWindowAppearing())
                     cachedPresetList = prog->fileIO.GetPresetList();
 
-                if (ImGui::MenuItem("Browse...", "Ctrl + Shift + O"));
-                    //prog->settings.LoadVisionPreset(f_openDialog);
+                if (ImGui::MenuItem("Browse...", "Ctrl + Shift + O"))
+                    prog->audio.CurrentPreset.Load(f_openDialog);
 
                 if (!cachedPresetList.empty()) {
                     ImGui::Separator();
@@ -456,8 +455,8 @@ void GUI::renderMenuBar() {
 
                     for (const auto& presetPath : cachedPresetList) {
                         isCurrentPreset = presetPath == prog->fileIO.LastPreset;
-                        if (ImGui::MenuItem(presetPath.stem().string().c_str(), isCurrentPreset ? "(current)" : ""));
-                            //prog->settings.LoadVisionPreset(f_noDialog, presetPath.string());
+                        if (ImGui::MenuItem(presetPath.stem().string().c_str(), isCurrentPreset ? "(current)" : ""))
+                            prog->audio.CurrentPreset.Load(f_noDialog, presetPath.string());
                     }
                 }
 

@@ -4,36 +4,45 @@
 
 void GlobalPreset::Load(FileIOFlags openDialog, string path) {
 
-    string realpath = FileIO::OpenFileDialog(f_preset);
+    std::string PresetFilePath;
+
+    Logger::log("Loading preset...", level_INFO, source_FILES);
+
+    if (openDialog == f_openDialog)
+        PresetFilePath = FileIO::OpenFileDialog(f_preset);
+    else if (path.size())
+        PresetFilePath = path;
+    else
+        PresetFilePath = FileIO::LastPreset.string();
+
+    if (PresetFilePath.size() < 1) return;
+
+    node::SetCurrentEditor(engine->prog->gui.node_Context);
+    engine->clearAll();
+
     bool LocalCoInitialize = SUCCEEDED(CoInitializeEx(nullptr, 0));
-    auto* xml = FileIO::XmlFromFile(realpath);
+    auto* xml = FileIO::XmlFromFile(PresetFilePath);
     if (!xml) {
-        Logger::log("PRESET: could not load " + realpath + ", Incorrect file format",level_WARNING, source_FILES);
+        Logger::log("PRESET: could not load " + PresetFilePath + ", Incorrect file format",level_WARNING, source_FILES);
         if (LocalCoInitialize) CoUninitialize();      
     }
 
-    long count = 0;
-    IXMLDOMNodeList* NodeList = FileIO::XmlSelectNodes(xml, L"/PRESET/NODES/NODE", count);
-    
-    node::SetCurrentEditor(engine->prog->gui.node_Context);
-    
-    for (long i = 0; i < count; i++) {
+    long countNode = 0;
+    IXMLDOMNodeList* NodeList = FileIO::XmlSelectNodes(xml, L"/PRESET/NODES/NODE", countNode);
+   
+    for (long i = 0; i < countNode; i++) {
         IXMLDOMNode* SingleNode = FileIO::XmlNodeAt(NodeList, i);
         if (!SingleNode) continue;
-
 
         BlockType type = (BlockType)FileIO::XmlAttrInt(SingleNode, L"type");
         NodeID ID = FileIO::XmlAttrInt(SingleNode, L"id");
 
-        if (type == BlockType::InputDevice || type == BlockType::OutputDevice) {
-           engine->addNewDeviceNode(type, FileIO::XmlAttr(SingleNode, L"name"), ID);
-        }
-        else {
+        if (type == BlockType::InputDevice || type == BlockType::OutputDevice) 
+           engine->addNewDeviceNode(type, FileIO::XmlAttr(SingleNode, L"name"), ID);      
+        else 
             engine->addNewDSPNode(type,ID);
-        }
-
-        ImVec2 SetPos = { FileIO::XmlAttrFloat(SingleNode, L"posX"),FileIO::XmlAttrFloat(SingleNode, L"posY") };
         
+        ImVec2 SetPos = { FileIO::XmlAttrFloat(SingleNode, L"posX"),FileIO::XmlAttrFloat(SingleNode, L"posY") };     
         node::SetNodePosition(ID, SetPos);
    
         // switch case param handler ?
@@ -41,23 +50,52 @@ void GlobalPreset::Load(FileIOFlags openDialog, string path) {
         SingleNode->Release();
     }
 
-    node::SetCurrentEditor(nullptr);
-
-    if(NodeList)
-    NodeList->Release();
+    if(NodeList) NodeList->Release();
       
+    long countLink = 0;
+    IXMLDOMNodeList* LinkList = FileIO::XmlSelectNodes(xml, L"/PRESET/LINKS/LINK", countLink);
+
+    for (long i = 0; i < countLink; i++) {
+        IXMLDOMNode* SingleLink = FileIO::XmlNodeAt(LinkList, i);
+        if (!SingleLink) continue;
+
+        LinkID Lid = FileIO::XmlAttrInt(SingleLink, L"ID");
+        PinID LeftPin = FileIO::XmlAttrInt(SingleLink, L"Left");
+        PinID RightPin = FileIO::XmlAttrInt(SingleLink, L"Right");
+        engine->createLink(LeftPin, RightPin, Lid);
+        SingleLink->Release();
+    }
+    if (LinkList) LinkList->Release();
+
+
+    Logger::log("Loaded preset: " + PresetFilePath, level_INFO, source_FILES);
 
     // Link list
-   // auto* global = FileIO::XmlSelectSingle(xml, L"/PRESET/GLOBAL/SETUP");
 
+
+
+    node::SetCurrentEditor(nullptr);
     if (xml)
     xml->Release();
     FileIO::SaveLastPresetPath(f_preset, path);
     if (LocalCoInitialize) CoUninitialize();
-   // LoadToEngine();
+
 }
 
 void GlobalPreset::Save(FileIOFlags openDialog, string path){
+
+
+    string savePath;
+
+    if (openDialog == f_openDialog)
+        savePath = FileIO::saveFileDialog(f_preset);
+    else if (path.size())
+        savePath = path;
+    else
+        savePath = FileIO::LastPreset.string();
+
+    if (savePath.size() < 1) return;
+
 
     int VERSION = 1;
 
@@ -80,11 +118,9 @@ void GlobalPreset::Save(FileIOFlags openDialog, string path){
  
     out += "</PRESET>";
 
-    string realpath = FileIO::saveFileDialog(f_preset);
+    Logger::log("Saved preset to : " + savePath, level_INFO, source_FILES);
 
-    Logger::log("Saved preset to : " + realpath, level_INFO, source_FILES);
-
-    FileIO::SaveXML(out, realpath);
+    FileIO::SaveXML(out, savePath);
 }
 
 void GlobalPreset::LoadToEngine() {

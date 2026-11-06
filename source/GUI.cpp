@@ -430,7 +430,6 @@ void GUI::renderMenuBar() {
 
     int frameNumber = ImGui::GetFrameCount();
     static bool keyCommands = 0;
-    static int recursiveLoad = 0;
 
 
     if (ImGui::BeginMainMenuBar()) {
@@ -441,18 +440,13 @@ void GUI::renderMenuBar() {
             if (ImGui::MenuItem("Open Folder", "Ctrl + F"));//prog->selectFile(f_openDialog, f_openFolder, f_current, recursiveLoad);
             ImGui::SetItemTooltip("Load and view image");
             ImGui::Separator();
-
-            if (ImGui::BeginMenu("Folder load behaviour")) {
-                ImGui::RadioButton("Load current folder only", &recursiveLoad, 0);
-                ImGui::RadioButton("Load sub-folders recursively", &recursiveLoad, 1);
-                ImGui::EndMenu();
-            }
-
-            ImGui::Separator();
             if (ImGui::MenuItem("Save Current Image", "Ctrl + S"));
             if (ImGui::MenuItem("Save as...", "Ctrl + Shift + S"));
 
-            ImGui::SetItemTooltip("Save currently shown image\nSelect View > Binarized to save thresholded image");
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Save preset as...")) prog->audio.CurrentPreset.Save(f_openDialog);
 
             if (ImGui::BeginMenu("Default save directory")) {
 

@@ -9,7 +9,7 @@
 #include <objbase.h>  
 #include <msxml6.h> 
 
-#include "AudioPresets.h"
+#include "AudioEngine.h"
 
 using std::filesystem::path;
 
@@ -33,8 +33,8 @@ public:
     static path             getEXEDir();
     static bool             ShowInExplorer(const std::wstring& filePath);
 
-    static GlobalPreset     LoadPreset(string path);  // includes saveLast
-    static bool             SavePreset(const GlobalPreset& preset, std::string path); // includes SaveLast
+    static string           LoadPreset(string path);  // includes saveLast
+    static bool             SaveXML(string presetXML, std::string path); // includes SaveLast
 
     static string           LoadLastPresetPath(FileIOFlags type);       // includes setting member
     static bool             SaveLastPresetPath(FileIOFlags type, string path);  // includes setting member
@@ -48,8 +48,8 @@ public:
     static std::string       XmlParseErrorText(IXMLDOMDocument2* xml);
 
     static IXMLDOMNodeList* XmlSelectNodes(IXMLDOMDocument2* xml, const wchar_t* xpath, long& countOut);
-    static IXMLDOMNode* XmlSelectSingle(IXMLDOMDocument2* xml, const wchar_t* xpath);
-    static IXMLDOMNode* XmlNodeAt(IXMLDOMNodeList* list, long index);
+    static IXMLDOMNode*     XmlSelectSingle(IXMLDOMDocument2* xml, const wchar_t* xpath);
+    static IXMLDOMNode*     XmlNodeAt(IXMLDOMNodeList* list, long index);
 
     static string            XmlAttr(IXMLDOMNode* node, const wchar_t* attrName);
     static int               XmlAttrInt(IXMLDOMNode* node, const wchar_t* attrName, int fallback = 0);

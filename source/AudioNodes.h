@@ -37,10 +37,6 @@ public:
 	bool showInterface = 1;
 	ImVec2 startPos;
 
-	// Presets
-	virtual void saveCurrentState() {}
-	virtual bool loadPreset(NodePreset loaded) { return 0; }
-
 
 	// Data
 	NodePreset currentState;

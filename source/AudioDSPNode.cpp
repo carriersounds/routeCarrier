@@ -7,83 +7,73 @@ DSPNode::DSPNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID
 }
 
 void DSPNode::renderAsNode(float pinSize, float spacing) {
-
     node::BeginNode(ID);
 
-    // ============== TITLE ============== 
     startPos = ImGui::GetCursorPos();
+    const float nodeLeftX = ImGui::GetCursorScreenPos().x;
 
-    
+    // ======- title =======
     ImGui::Text(getBlockName().c_str());
-    ImGui::SameLine(); 
-    ImGui::Dummy({ 120,5 });
+    ImGui::SameLine();
+    ImGui::Dummy({ 120, 5 });
+
+    // ---- measure real width ----
+    const float minW = 240.0f;                 // title + IN + OUT + buttons fit in this
+    float contentW = minW;
 
     ImVec2 p = ImGui::GetCursorScreenPos();
-    float w = node::GetNodeSize(ID).x - pinSize - spacing - spacing;
-    ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + w, p.y), IM_COL32(120, 120, 120, 255));
     ImGui::Dummy(ImVec2(0, 6));
 
-    // ============== PARAMETERS / IMPLEMENTED IN DERIVED FX =====
-
     if (showInterface) {
-        renderInterface(w);
+        renderInterface(contentW);             // pass stable value
+        float used = ImGui::GetCurrentWindow()->DC.CursorMaxPos.x - nodeLeftX;
+        contentW = std::max(contentW, used);
     }
-        
-    // ============== INPUT PIN ============== 
-    const char* labelin = "    IN";
-    ImVec2 textSizeIn = ImGui::CalcTextSize(labelin);
+
+    // separator line uses the stable width
+    ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + contentW, p.y), IM_COL32(120, 120, 120, 255));
+
+    // ---- pin row: IN on the left, OUT right-aligned to contentW ----
+    const float rowX = ImGui::GetCursorPosX();
+    const float r = ImGui::GetTextLineHeight() * 0.5f;
+
+    // input
     node::BeginPin(inputPin, ed::PinKind::Input);
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 2 * spacing);
-
-    // Input Pin icon   
-    ImDrawList* dli = ImGui::GetWindowDrawList();
-    ImVec2 posi = ImGui::GetCursorScreenPos();
-    dli->AddCircleFilled(ImVec2(posi.x, posi.y + textSizeIn.y * 0.5f), textSizeIn.y * 0.5f, IM_COL32(30, 150, 230, 255));
-    ImGui::TextUnformatted(labelin);
-    node::EndPin();
-
-    // ============== OUTPUT PIN ==============        
-    const char* labelout = "OUT       ";
-    ImVec2 textSizeOut = ImGui::CalcTextSize(labelout);
-    ImGui::SameLine();
-
-    // Move cursor to the right edge.. different in debug/release for some reason
-    float preciseOffset = 55.0f;
-#ifdef _DEBUG
-    preciseOffset = 53.0f;
-#endif // DEBUG
-
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + node::GetNodeSize(ID).x - (textSizeOut.x + spacing + preciseOffset));
-    node::BeginPin(outputPin, ed::PinKind::Output);
-    ImGui::TextUnformatted(labelout);                   // this determines the feedback loop for the node size for some reason
-    ImGui::SameLine();
-
-    // Output Pin icon
-    ImDrawList* dlo = ImGui::GetWindowDrawList();
-    ImVec2 poso = ImGui::GetCursorScreenPos() + ImVec2(spacing, 0);
-    poso.x = poso.x - textSizeOut.y - spacing;
-    dlo->AddCircleFilled(ImVec2(poso.x, poso.y + textSizeOut.y * 0.5f), textSizeOut.y * 0.5f, IM_COL32(250, 150, 30, 255));
-    node::EndPin();
-
-
-    // collapse & bypass button. location determined after total interface width is known >> node::GetNodeSize(ID)
-
-    ImGui::SetCursorPosX(startPos.x + node::GetNodeSize(ID).x - (spacing + preciseOffset - 20));
-    ImGui::SetCursorPosY(startPos.y - 3);
-
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 5,3 });
-
-    if (showInterface) {
-        if (ImGui::Button(ADD_ID(">##"))) { showInterface = !showInterface; }
-    } else {
-        if (ImGui::Button(ADD_ID("v##"))) { showInterface = !showInterface; }
+    {
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImGui::GetWindowDrawList()->AddCircleFilled({ pos.x + r, pos.y + r }, r, IM_COL32(30, 150, 230, 255));
+        ImGui::Dummy({ 2 * r, 2 * r });
+        ImGui::SameLine();
+        ImGui::TextUnformatted("IN");
     }
+    node::EndPin();
 
-    ImGui::SetCursorPosX(startPos.x + node::GetNodeSize(ID).x - (spacing + preciseOffset + 40));
-    ImGui::SetCursorPosY(startPos.y - 3);
+    // output
+    const char* labelOut = "OUT";
+    const float outW = ImGui::CalcTextSize(labelOut).x + spacing + 2 * r;
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(rowX + contentW - outW);
+    node::BeginPin(outputPin, ed::PinKind::Output);
+    {
+        ImGui::TextUnformatted(labelOut);
+        ImGui::SameLine(0, spacing);
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImGui::GetWindowDrawList()->AddCircleFilled({ pos.x + r, pos.y + r }, r, IM_COL32(250, 150, 30, 255));
+        ImGui::Dummy({ 2 * r, 2 * r });
+    }
+    node::EndPin();
+
+    // ---- buttons, right-aligned to the same stable width ----
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 5, 3 });
+    const float btnW = ImGui::CalcTextSize(">").x + 10;
+    ImGui::SetCursorPos({ startPos.x + contentW - btnW, startPos.y - 3 });
+
+    if (ImGui::Button(showInterface ? ADD_ID(">##") : ADD_ID("v##"))) toggle(showInterface);
+
+    ImGui::SetCursorPos({ startPos.x + contentW - btnW - 65, startPos.y - 3 });
     tools::toggleButton(ADD_ID("bypass##"), bypass);
-
     ImGui::PopStyleVar();
+
     node::EndNode();
 }
 

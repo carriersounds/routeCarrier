@@ -17,6 +17,9 @@ AudioNode::AudioNode(BlockType blocktype, juce::String initDeviceName, NodeID no
 
 	inputPin = 0;	// 0 means not present or connected
 	outputPin = 0;
+
+
+    currentState.defineSetting("Bypass", &bypass);
 }
 
 void AudioNode::sendAudioToNextNodes() {

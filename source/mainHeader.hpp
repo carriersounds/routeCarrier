@@ -401,6 +401,9 @@ struct BlockLink {
     node::PinId ID_right;
     // maybe name, color or volume level or something
 
+    string ToXML() {
+        return "";
+    }
 };
 
 enum class pinType {

@@ -83,6 +83,16 @@ public:
             }
         }
 
+        // preset
+        currentState.defineSetting("DryWet", &dryWetMix);
+        for (int i = 0; i < (int)bandSettings.size(); i++) {
+            currentState.defineSetting(to_string(i) + "Enabled",&bandSettings[i].gainDB);
+            currentState.defineSetting(to_string(i) + "Type",   &bandSettings[i].typeToCtrl);
+            currentState.defineSetting(to_string(i) + "Freq",   &bandSettings[i].freq);
+            currentState.defineSetting(to_string(i) + "Gain",   &bandSettings[i].gainDB);
+            currentState.defineSetting(to_string(i) + "Q",      &bandSettings[i].Q);
+        }
+
     }
 
     std::vector<float> X_frequencies;
@@ -191,6 +201,10 @@ public:
         resonance = 0.7f;
         filterType = 0;
         *filter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(48000.0, cutoffHz);
+    
+        currentState.defineSetting("Cutoff", &cutoffHz);
+        currentState.defineSetting("Reso", &resonance);
+        currentState.defineSetting("Type", &filterType);
     }
 
     float cutoffHz{ 200.0f };
@@ -212,6 +226,8 @@ class Gain final : public DSPNode
 public:
     Gain(BlockType blocktype, juce::String initDeviceName, NodeID nodeID): DSPNode(blocktype, initDeviceName, nodeID), gainValueDB(0.0f) {
         gain.setGainDecibels(gainValueDB);
+
+        currentState.defineSetting("Gain", &gainValueDB);
     }
 
     float gainValueDB;
@@ -239,6 +255,14 @@ public:
 
         reverbParams = juce::dsp::Reverb::Parameters(roomSize,damping,wetLevel,dryLevel,width,freezeMode);
         reverb.setParameters(reverbParams);
+
+
+        currentState.defineSetting("Size", &roomSize);
+        currentState.defineSetting("Damp", &damping);
+        currentState.defineSetting("Wet", &wetLevel);
+        currentState.defineSetting("Dry", &dryLevel);
+        currentState.defineSetting("Width", &width);
+        currentState.defineSetting("Freeze", &freezeMode);
     }
 
     juce::dsp::Reverb::Parameters reverbParams;
@@ -414,6 +438,17 @@ public:
         compressor.get<0>().setRatio(ratio);
         compressor.get<1>().setGainDecibels(outputGainDB);
         drywet.setWetMixProportion(dryWetMix);
+
+
+        // preset
+        currentState.defineSetting("Attack", &attack);
+        currentState.defineSetting("Release", &release);
+        currentState.defineSetting("Ratio", &ratio);
+        currentState.defineSetting("Threshold", &threshold);
+        currentState.defineSetting("OutputGain", &outputGainDB);
+        currentState.defineSetting("DryWet", &dryWetMix);
+
+
     }
 
     float outputGainDB;
@@ -449,6 +484,17 @@ public:
         pan.setRule(juce::dsp::PannerRule::balanced);
         midside.setPan(midSide);
         midside.setRule(juce::dsp::PannerRule::balanced);
+
+
+
+        currentState.defineSetting("Gain", &gainValueDB);
+        currentState.defineSetting("Mono", &mono);
+        currentState.defineSetting("InvLeft", &invertLeft);
+        currentState.defineSetting("InvRight", &invertRight);
+        currentState.defineSetting("PanValue", &panValue);
+        currentState.defineSetting("MidSide", &midSide);
+        currentState.defineSetting("MidSideGUI", &MidSideModeGUI);
+
     }
 
     float gainValueDB;

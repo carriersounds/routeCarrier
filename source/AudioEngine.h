@@ -9,7 +9,6 @@
 #include "AudioEffects.h"
 #include "AudioVisualizerNode.h"
 #include "AudioPresets.h"
-
 #include "AudioApplicationNode.h"
 
 class Program;
@@ -78,8 +77,7 @@ public:
 
     void run();
  
-    juce::WaitableEvent requestNewAudioBlock;       // from main output
-    
+    juce::WaitableEvent requestNewAudioBlock;       // from main output  
     atomic<bool> enableRouting;
 
     // Identifiers
@@ -113,13 +111,12 @@ public:
     float engineClockTimeMs = 0;
     float engineProcessTimeMs = 0;
 
-
-    
+    GlobalPreset CurrentPreset;
+    Program* prog;
 
 private:
 
-    GlobalPreset CreatePreset();
-    bool LoadPreset(const GlobalPreset& preset) { return true; }
+
 
     float mainOutSampleRate = 48000;
     BaseID uniqueID;
@@ -130,7 +127,7 @@ private:
     int numDevices = 0;
     std::thread audiothread;
     std::mutex nodeLock;
-    Program* prog;
+
     bool audio_engine_on;
 };
 

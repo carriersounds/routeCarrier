@@ -10,14 +10,13 @@ Program::Program() : gui(this), fileIO(this),audio(this){
     string dirPath = std::filesystem::path(buffer).parent_path().string();
     SetCurrentDirectoryA(dirPath.c_str());
 
-    
-    string fontpath = (fileIO.EXEpath / "assets" / "Roboto-Black.ttf").string();
-    ImGui::GetIO().Fonts->AddFontFromFileTTF(fontpath.c_str(), 16.0f);
-
+    ImGui::GetIO().Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\arialbd.ttf", 16.0f);
 }
 
+void Program::OpenFile(bool openNewDialog, bool folder, string extFileLoad) {
+        
 
-
+}
 
 Program::~Program() {
     

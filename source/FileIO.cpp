@@ -62,55 +62,14 @@ string FileIO::LoadLastPresetPath(FileIOFlags type) {
     return pathFromFile;
 }
 
-GlobalPreset FileIO::LoadPreset(string path) {
-    bool LocalCoInitialize = SUCCEEDED(CoInitializeEx(nullptr, 0));
-    GlobalPreset preset;
-
-    IXMLDOMDocument2* xml = XmlFromFile(path);
-    if (!xml) {
-        Logger::log("VPRESET: could not load " + path + ", resetting to defaults",
-            level_WARNING, source_FILES);
-        if (LocalCoInitialize) CoUninitialize();
-        return preset;
-    }
-
-    IXMLDOMNode* params = XmlSelectSingle(xml, L"/VPRESET/PARAMS");
-    if (params) {
-        //preset.ThresholdParameter = XmlAttrFloat(params, L"parameter", preset.ThresholdParameter);
-        //preset.ThresholdMethod = XmlAttrInt(params, L"method", preset.ThresholdMethod);
-        params->Release();
-    }
-    else {
-        Logger::log("VPRESET: no <PARAMS> node, threshold params left at defaults",
-            level_INFO, source_FILES);
-    }
-
-
-    xml->Release();
-    SaveLastPresetPath(f_preset, path);
-
-    if (LocalCoInitialize) CoUninitialize();
-    return preset;
-}
-
-bool FileIO::SavePreset(const GlobalPreset& preset, std::string path) {
-    std::string out;
-    out += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-    out += "<VPRESET version=\"2\">\n";
-  //  out += "    <PARAMS parameter=\"" + std::to_string(preset.ThresholdParameter) + "\" method=\"" + std::to_string(preset.ThresholdMethod) + "\"/>\n";
-    out += "    <FILTERS>\n";
-  //  out += preset.Area.AsXMLEntry();
-  //  out += preset.DefectCount.AsXMLEntry();
-    out += "    </FILTERS>\n";
-    out += "</VPRESET>\n";
-
-
+bool FileIO::SaveXML(string presetXML, std::string path) {
+    
     std::ofstream file(path, std::ios::binary | std::ios::trunc);
     if (!file.is_open()) {
         Logger::log("PRESET: cannot open for writing: " + path, level_ERROR, source_FILES);
         return false;
     }
-    file << out;
+    file << presetXML;
 
     return true;
 }

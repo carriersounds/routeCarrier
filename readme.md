@@ -44,5 +44,5 @@ This program is built around a node editor where audio devices can be connected 
 - Multichannel device support (3+ channels per device), currently it handles up to 2 channels per device
 - VST node support, bring your own plugins!
 
-
-
+## AI notice (for those who care)
+Around 90% of the code was written by hand or re-purposed from older projects of mine, and AI tools were mostly used for boilerplate helpers (XML parsing functions).

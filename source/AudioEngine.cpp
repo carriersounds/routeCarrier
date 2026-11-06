@@ -1,8 +1,8 @@
 #include "AudioEngine.h"
 #include "Program.h"
 
-
 AudioEngine::AudioEngine(Program* prog) : 
+    CurrentPreset(this),
     prog(prog), nullDevice(BlockType::NullDevice,"",1000){
     enableRouting = true;
     mainOutputReady = false;

@@ -35,6 +35,10 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
 
     if(m_blockType != BlockType::NullDevice)
     deviceManager.addAudioCallback(this);       // HERE it auto-calls "aboutToStart"
+
+
+    currentState.defineSetting("DeviceGain", &deviceGain_dB);
+
 }
  
 void DeviceNode::renderAsNode(float pinSize, float spacing) {
@@ -203,7 +207,7 @@ void DeviceNode::selectDevice(const juce::String& nameToFind, bool isOutput)
                     return;
                 }
             }
-            Logger::log("Audio Device Could not be found",level_ERROR, source_DEVICE);
+            Logger::log("Audio Device Could not be found: " + nameToFind.toStdString(), level_ERROR, source_DEVICE);
         }
 
     }

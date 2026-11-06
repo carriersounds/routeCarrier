@@ -16,7 +16,7 @@ public:
     Program();
     ~Program();
 
-    void selectFile(bool openNewDialog, bool folder = 0, int action = 0, int recursive = 0, string extFileLoad = "");
+    void OpenFile(bool openNewDialog, bool folder = 0, string extFileLoad = "");
    
     GUI gui;            // Main GUI functions. Node GUIs are implemented per-element
     AppLog appLog;	    // internal log, can be accessed with Alt+L

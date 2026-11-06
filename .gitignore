@@ -4,3 +4,4 @@ obj/
 *.user
 *.suo
 *.log
+/assets/Settings/Presets

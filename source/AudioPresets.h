@@ -97,7 +97,7 @@ public:
 class GlobalPreset {
 public:
     GlobalPreset(AudioEngine* engine) : engine(engine) {};
-    AudioEngine* engine;
+    AudioEngine* engine;  
 
     void Load(FileIOFlags openDialog, string path = "");
     void Save(FileIOFlags openDialog, string path = "");

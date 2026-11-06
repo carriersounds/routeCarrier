@@ -399,10 +399,12 @@ struct BlockLink {
     node::LinkId ID;
     node::PinId ID_left;
     node::PinId ID_right;
-    // maybe name, color or volume level or something
 
+    // maybe name, color or volume level or something
     string ToXML() {
-        return "";
+        string builder;
+        builder += "    <LINK ID=\"" + to_string(ID.Get()) + "\" Left=\"" + to_string(ID_left.Get()) + "\" Right=\"" + to_string(ID_right.Get()) + "\"\n";
+        return builder;
     }
 };
 

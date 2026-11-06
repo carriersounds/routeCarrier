@@ -113,13 +113,13 @@ public:
 
     GlobalPreset CurrentPreset;
     Program* prog;
-
+    BaseID uniqueID;
 private:
 
 
 
     float mainOutSampleRate = 48000;
-    BaseID uniqueID;
+
     BaseID getNewID(Identifier type, BaseID presetComponentID = 0);
     void calculateSends(LinkID newlink);
     void topologicalSortNodes();

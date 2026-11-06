@@ -229,7 +229,7 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
 
 NodeID AudioEngine::addNewDSPNode(BlockType typeOfEffect, NodeID presetNodeID) {
 
-    NodeID blockID = getNewID(Identifier::node, presetNodeID);                // get new IDs for node and pins
+    NodeID blockID = getNewID(Identifier::node, presetNodeID);                // get new IDs for node and pins. pins will follow pre-set ID
     PinID inputPinID = getNewID(Identifier::pin);
     PinID outputPinID = getNewID(Identifier::pin);
 

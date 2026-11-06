@@ -42,14 +42,15 @@ void GlobalPreset::Save(FileIOFlags openDialog, string path){
     string out = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
     out += "<PRESET version=\"1\">\n";
 
+    out += "   <GLOBAL>\n";
+    out += "      <SETUP LastID=\"" + to_string(engine->uniqueID) + "\"\n";
+    out += "   </GLOBAL>\n";
     out += "   <NODES>\n";
     for (auto& [ID,node] : engine->nodes)
         out += node->currentState.saveCurrentState(engine->prog->gui.node_Context);       // save each node's own preset params. required engine context to get ax::nodecontext for location
 
     out += "   </NODES>\n";  
-
     out += "   <LINKS>\n";
-
     for (auto& [ID,lp] : engine->links)
         out += lp.ToXML();
 
@@ -67,6 +68,8 @@ void GlobalPreset::Save(FileIOFlags openDialog, string path){
 
 void GlobalPreset::UpdateFromEngine() {
 
+
+
     // settings within dsp / device node (gain)
     // missing devices
     // message if the preset is from an older/newer version
@@ -82,12 +85,11 @@ void GlobalPreset::LoadToEngine() {
 string NodePreset::saveCurrentState(node::EditorContext* context) {
 
     string NodeStateString;
-
     NodeStateString +=
         "      <NODE type=\"" + blockNames[(int)master->getBlockType()] +
         "\" name=\"" + master->getBlockName() + "\"" +
-          " id=\"" + to_string(master->getID()) + "\" ";
-       
+          " id=\"" + to_string(master->getID()) + "\" ";                        // Pin ID's get set automatically if node is created with correct ID
+
         for (auto& param : params) {
             NodeStateString += param.name + "=\"";
             NodeStateString += param.saveParamValue();

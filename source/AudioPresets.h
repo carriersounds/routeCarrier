@@ -65,10 +65,6 @@ public:
     AudioNode* master;
     vector<GUIParam> params;
 
-    string blockNames[12] = { "Null", "Input", "Output", "FileIn", "FileOut",
-        "Filter","Gain","Reverb","Graphic Equalizer","Saturator","Channel Utility","Compressor" };
-
-
     string saveCurrentState(node::EditorContext* context);
 
     // dereference all pointers and SET params based on strings
@@ -102,29 +98,10 @@ public:
     void Load(FileIOFlags openDialog, string path = "");
     void Save(FileIOFlags openDialog, string path = "");
 
-    void UpdateFromEngine();
     void LoadToEngine();
 
+    // doesnt need own data members, borrows all from audioengine. own data is only stuff the engine doesnt need
 
-    //doesnt need own data members, borrows all from audioengine. own data is only stuff the engine doesnt need
-
-    // settings within dsp / device node (gain)
-    // missing devices
-    // message if the preset is from an older/newer version
-    // text or bytecode representation function built-in, easy input for fileIO
-
-   
-    // what to save? actions... ID's handle themselves
-
-    // node location????
-    // order in preset: device nodes first, then dsp nodes, then links, finally... settings 
-
-    // topologically sorted :
-
-    // node.printCurrentState();
-
-
-    //const char* preset = "lastID=1008"; //finally set newID to this, so it is above all loaded things (prevent ID clash)
 };
 
 

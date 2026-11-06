@@ -33,7 +33,7 @@ public:
     static path             getEXEDir();
     static bool             ShowInExplorer(const std::wstring& filePath);
 
-    static string           LoadPreset(string path);  // includes saveLast
+    static bool             LoadPreset(string path);  // includes saveLast
     static bool             SaveXML(string presetXML, std::string path); // includes SaveLast
 
     static string           LoadLastPresetPath(FileIOFlags type);       // includes setting member

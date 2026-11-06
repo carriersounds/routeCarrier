@@ -10,7 +10,7 @@ FileIO::FileIO(Program* input) {
     prog = input;
     EXEpath = getEXEDir();
     AssetsFolder = EXEpath.parent_path().parent_path() / "assets";
-    saveDir = "D:\\LRI\\Vision\\";
+    saveDir = AssetsFolder / "Recordings";
 
     PresetFolder = AssetsFolder / "Settings" / "Presets";
     GlobalFolder = AssetsFolder / "Settings" / "Global";
@@ -62,6 +62,8 @@ string FileIO::LoadLastPresetPath(FileIOFlags type) {
     return pathFromFile;
 }
 
+
+
 bool FileIO::SaveXML(string presetXML, std::string path) {
     
     std::ofstream file(path, std::ios::binary | std::ios::trunc);
@@ -70,6 +72,9 @@ bool FileIO::SaveXML(string presetXML, std::string path) {
         return false;
     }
     file << presetXML;
+
+
+    SaveLastPresetPath(f_preset, path);
 
     return true;
 }

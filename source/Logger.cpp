@@ -1,197 +1,176 @@
 #include "Logger.h"
+#include "Program.h"
+#define min(x,y) (x < y ? x : y);
 
-void Logger::ThreadExecute(){
-    try
-    {
-        if (!fullLogPath.empty()) { 
+void Logger::ThreadExecute() {
+	if (!fullLogPath.empty()) {
+		OpenLogFile();
+	}
 
-            string inputFileLoc = fullLogPath + "\\" + GetTimestamp() + "_logs.txt";
+	while (!threadStop) {
+		CompleteMessage msg;
+		bool haveMsg = false;
+		{
+			std::lock_guard<std::mutex> lock(messageLock);
+			if (!logMessageQueue.empty()) {
+				msg = logMessageQueue.front();
+				logMessageQueue.pop();
+				haveMsg = true;
+			}
+		}
 
-            logfile.open(inputFileLoc);
+		if (!haveMsg) {
+			std::this_thread::sleep_for(50ms);
+			continue;
+		}
 
-           // std::cout << "INput file = " << inputFileLoc << std::endl;
-        }
-        else { 
-            std::cerr << "Full path was empty, unable to open log file" << std::endl; 
-            return;
-        }
-    }
-    catch (const std::exception& error)
-    {
-        std::cerr << "Unable to open logfile" << std::endl;
-        std::cerr << error.what() << std::endl;
-    }
-    while (threadStop == false) {
-        if (!messageQueue.empty())
-        {
-            try
-            {
-                CompleteMessage completeMes;
-                {
-                    std::lock_guard<std::mutex> lock(messageLock);
-                    completeMes.message = messageQueue.front(); messageQueue.pop();
-                    completeMes.time = timeQueue.front(); timeQueue.pop();
-                    completeMes.level = levelQueue.front(); levelQueue.pop();
-                    completeMes.source = sourceQueue.front(); sourceQueue.pop();
-                }
-                if (logfile.is_open())
-                {
-                    logfile << completeMes.SentenceBuilder();
-                    logfile.flush();
-                  //  std::cout << "Complete Sentence: " + completeMes.SentenceBuilder() << std::endl;
-                }
-                if (!subscribers.empty()) { notifySubscribers(completeMes.SentenceBuilder()); }
-            }
-            catch (const std::exception& ex)
-            {
-                std::cerr << ex.what() << std::endl;
-            }
-        }
-        else
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-    }
+		try {
+			if (msg.message == lastMessageWithoutTime) {
+				counter++;
+				continue;
+			}
+
+			if (counter) {
+				CompleteMessage repeatMsg = MakeMessage("Last message repeated (" + to_string(counter) + "x)", level_INFO, source_DEFAULT, 0);
+				WriteAndNotify(repeatMsg);
+				counter = 0;
+			}
+
+			lastMessageWithoutTime = msg.message;
+			WriteAndNotify(msg);
+		}
+		catch (const std::exception& ex) {
+			OutputDebugStringA(ex.what());
+		}
+	}
+}
+
+void Logger::WriteAndNotify(CompleteMessage& msg) {
+	const time_t t = time(0);
+	struct tm now;
+	localtime_s(&now, &t);
+
+	if (!(logfile.is_open() && currentDay == now.tm_yday)) {
+		logfile.close();
+		OpenLogFile();
+	}
+
+	const auto text = msg.SentenceBuilder();
+	logfile << text;
+	logfile.flush();
+
+	if (!subscribers.empty()) {
+		notifySubscribers(text, msg);
+	}
+}
+
+void Logger::OpenLogFile() {
+	try
+	{
+		fileLocation = fullLogPath + "\\" + GetTimestamp() + "_logs.txt";
+		logfile.open(fileLocation);
+
+		const time_t t = time(0);
+		struct tm now;
+		localtime_s(&now, &t);
+		currentDay = now.tm_yday;
+#ifdef _DEBUG
+		Logger::log("The program is in DEBUG mode", level_INFO, source_DEFAULT);
+#else
+		Logger::log("The program is in RELEASE mode", level_INFO, source_DEFAULT);
+#endif
+	}
+	catch (const std::exception& error)
+	{
+		std::cerr << "Unable to open logfile" << std::endl;
+		std::cerr << error.what() << std::endl;
+	}
 }
 
 void Logger::getFullDirPath() {
-    
-        char buffer[MAX_PATH];
-        GetModuleFileNameA(NULL, buffer, MAX_PATH);
-        auto workingDirPath = std::filesystem::path(buffer).parent_path();
+	char buffer[MAX_PATH];
+	GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	auto workingDirPath = path(buffer).parent_path();
 
-        fullLogPath = workingDirPath.string() + "\\assets\\Logs";
-
-        string tempPath = fullLogPath;
-
-        if (!std::filesystem::is_directory(tempPath))
-        {
-
-            try {
-
-            
-
-            bool check = std::filesystem::create_directory(tempPath);
-            if (!check) { std::cout << "Unable to make a new directory!" << std::endl; return; }
-            else { std::cout << "Made a new directory! Yay!!!!" << std::endl; }
-
-
-            }
-            catch (std::exception e) {
-                std::cout << "FILE DIR PATH ERROR: " << e.what() << std::endl;
-            }
-
-
-        }
-        else
-        {
-            std::cout << "Directory already existed!" << std::endl;
-        }
-    
+	fullLogPath = workingDirPath.string() + "\\..\\..\\assets\\Logs";
+	if (!std::filesystem::is_directory(fullLogPath))
+	{
+		bool check = std::filesystem::create_directory(fullLogPath);
+		if (!check) { std::cout << "Unable to make a new Log directory!" << std::endl; return; }
+		else { std::cout << "Made a new Log directory!" << std::endl; }
+	}
+	else
+	{
+		std::cout << "Directory already existed!" << std::endl;
+	}
 }
 
-void Logger::logMessage(LogLevel level, const std::string& message, LogSource source)
+void Logger::logMessage(const std::string& message, LogLevel level, LogSource source, int id)
 {
-    //if (level >= currentLogLevel_) {
-    std::string time = GetTimestamp();
-    std::lock_guard<std::mutex> lock(messageLock);
-    timeQueue.push(time);
-    messageQueue.push(message);
-    levelQueue.push(level);
-    sourceQueue.push(source);
+	std::string time = GetTimestamp();
+	CompleteMessage completeMessage; {
+		completeMessage.time = time;
+		completeMessage.message = message;
+		completeMessage.level = level;
+		completeMessage.source = source;
+		completeMessage.id = id;
+	}
+	std::lock_guard<std::mutex> lock(messageLock);
+	logMessageQueue.push(completeMessage);
 }
 
-void Logger::notifySubscribers(std::string message) { 
-    for (Subscriber* subscriber : subscribers) { 
-        subscriber->sendLogMessage(message);
-    } 
+CompleteMessage Logger::MakeMessage(const std::string& message, LogLevel level, LogSource source, int id)
+{
+	std::string time = GetTimestamp();
+	CompleteMessage completeMessage; {
+		completeMessage.time = time;
+		completeMessage.message = message;
+		completeMessage.level = level;
+		completeMessage.source = source;
+		completeMessage.id = id;
+	}
+	return completeMessage;
+}
+
+
+void Logger::notifySubscribers(std::string fullMessage, CompleteMessage msgStruct) {
+	for (Subscriber* subscriber : subscribers) {
+		subscriber->sendLogMessage(fullMessage, msgStruct);
+	}
 };
 
 void Logger::DestroyLogger() {
-
-    getInstance().destroyLog();
+	getInstance().destroyLog();
 }
 
 void Logger::destroyLog() {
+	try {
+		while (!threadStop) {
+			vector<Subscriber*> subsToRemove;
 
+			for (size_t i = 0; i < subscribers.size(); i++)
+				removeSubscriber(subscribers[i]);
 
-    try {
-        while (!threadStop) {
-
-            for (Subscriber* subscriber : subscribers) { removeSubscriber(subscriber); }
-
-            if (messageQueue.size() == 0) {
-                threadStop = true;
-                logfile.close();
-                if (logThread.joinable()) { logThread.join(); }
-            }
-        }
-    }
-    catch (const std::exception& error)
-    {
-        std::cerr << error.what() << std::endl;
-    }
-  
-    
+			if (logMessageQueue.size() == 0) {
+				threadStop = true;
+				logfile.close();
+				if (logThread.joinable()) { logThread.join(); }
+			}
+		}
+	}
+	catch (const std::exception& error)
+	{
+		std::cerr << error.what() << std::endl;
+	}
 }
 
 string Logger::GetTimestamp()
 {
-    const time_t t = time(0);   // get time now
-    struct tm now;
-    localtime_s(&now, &t);
-    char timestamp[80];
-    strftime(timestamp, 80, "%Y-%m-%d %H.%M.%S - ", &now);
-    std::string strTimestamp = timestamp;
-    return strTimestamp;
-}
-
-string Logger::LevelName(LogLevel level){
-    switch (level)
-    {
-    case level_CRITICAL:
-        return "Critical";
-    case level_ERROR:
-        return "Error";
-    case level_MCERROR:
-        return "MCError";
-    case level_VISIONERROR:
-        return "VisionError";
-    case level_WARNING:
-        return "Warning";
-    case level_INFO:
-        return "Info";
-    case level_DEBUG:
-        return "Debug";
-    case level_DEFAULT:
-        return "Default";
-    default:
-        return "Default";
-    }
-}
-
-string Logger::SourceName(LogSource source) {
-    switch (source)
-    {
-    case source_GUI:
-        return "GUI";
-    case source_AUDIO:
-        return "Audio";
-    case source_DEVICE:
-        return "Device";
-    case source_DEBUG:
-        return "Debug";
-    case source_SETTINGS:
-        return "Settings";
-    case source_PROGRAM:
-        return "Program";
-    case source_NODE:
-        return "SignalNode";
-    case source_FILES:
-        return "File IO";
-    case source_DEFAULT:
-        return "Default";
-    default:
-        return "Default";
-    }
+	const time_t t = time(0);
+	struct tm now;
+	localtime_s(&now, &t);
+	char timestamp[80];
+	strftime(timestamp, 80, "%Y-%m-%d %H.%M.%S", &now);
+	std::string strTimestamp = timestamp;
+	return strTimestamp;
 }

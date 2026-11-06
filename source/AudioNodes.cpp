@@ -39,7 +39,7 @@ void AudioNode::sendAudioToNextNodes() {
 void AudioNode::mixInto(juce::AudioBuffer<float>* dest, const juce::AudioBuffer<float>* src)
 {
     // instead of jassert
-    int lowestChannelCount = std::min(dest->getNumChannels(), src->getNumChannels());
+    int lowestChannelCount = min(dest->getNumChannels(), src->getNumChannels());
 
     jassert(dest->getNumSamples() == src->getNumSamples());
     jassert(dest != nullptr);

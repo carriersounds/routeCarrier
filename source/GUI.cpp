@@ -430,23 +430,46 @@ void GUI::renderMenuBar() {
 
     int frameNumber = ImGui::GetFrameCount();
     static bool keyCommands = 0;
-
+    static vector<path> cachedPresetList;
 
     if (ImGui::BeginMainMenuBar()) {
 
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open Image", "Ctrl + O"));//prog->selectFile(f_openDialog, f_openFile, f_current, recursiveLoad);
-            ImGui::SetItemTooltip("Load and view image");
-            if (ImGui::MenuItem("Open Folder", "Ctrl + F"));//prog->selectFile(f_openDialog, f_openFolder, f_current, recursiveLoad);
-            ImGui::SetItemTooltip("Load and view image");
-            ImGui::Separator();
-            if (ImGui::MenuItem("Save Current Image", "Ctrl + S"));
-            if (ImGui::MenuItem("Save as...", "Ctrl + Shift + S"));
-
 
             ImGui::Separator();
+
+            if (ImGui::MenuItem("Open Preset")) prog->audio.CurrentPreset.Load(f_openDialog);
 
             if (ImGui::MenuItem("Save preset as...")) prog->audio.CurrentPreset.Save(f_openDialog);
+
+            if (ImGui::BeginMenu("Vision presets")) {
+
+                if (ImGui::IsWindowAppearing())
+                    cachedPresetList = prog->fileIO.GetPresetList();
+
+                if (ImGui::MenuItem("Browse...", "Ctrl + Shift + O"));
+                    //prog->settings.LoadVisionPreset(f_openDialog);
+
+                if (!cachedPresetList.empty()) {
+                    ImGui::Separator();
+                    bool isCurrentPreset = false;
+
+                    for (const auto& presetPath : cachedPresetList) {
+                        isCurrentPreset = presetPath == prog->fileIO.LastPreset;
+                        if (ImGui::MenuItem(presetPath.stem().string().c_str(), isCurrentPreset ? "(current)" : ""));
+                            //prog->settings.LoadVisionPreset(f_noDialog, presetPath.string());
+                    }
+                }
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::Separator();
+
+
+
+
+
 
             if (ImGui::BeginMenu("Default save directory")) {
 

@@ -52,7 +52,7 @@ namespace node = ax::NodeEditor;
 
 #define tRight ImGui::TableNextColumn()
 #define tDown ImGui::TableNextRow()
-
+#define min(x,y) (x < y ? x : y);
 
 namespace fs = std::filesystem;
 using namespace std::literals::chrono_literals;
@@ -393,7 +393,6 @@ namespace tools {
 }
 
 
-
 struct BlockLink {
     BlockLink(node::LinkId id , node::PinId left, node::PinId right):ID(id), ID_left(left), ID_right(right){}
     node::LinkId ID;
@@ -403,7 +402,7 @@ struct BlockLink {
     // maybe name, color or volume level or something
     string ToXML() {
         string builder;
-        builder += "    <LINK ID=\"" + to_string(ID.Get()) + "\" Left=\"" + to_string(ID_left.Get()) + "\" Right=\"" + to_string(ID_right.Get()) + "\"\n";
+        builder += "    <LINK ID=\"" + to_string(ID.Get()) + "\" Left=\"" + to_string(ID_left.Get()) + "\" Right=\"" + to_string(ID_right.Get()) + "\"/>\n";
         return builder;
     }
 };

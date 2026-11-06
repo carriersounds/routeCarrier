@@ -15,10 +15,13 @@ FileIO::FileIO(Program* input) {
     PresetFolder = AssetsFolder / "Settings" / "Presets";
     GlobalFolder = AssetsFolder / "Settings" / "Global";
 
+    
+
     makeSureDirectoryExists(saveDir);
     makeSureDirectoryExists(PresetFolder);
     makeSureDirectoryExists(GlobalFolder);
 
+    LoadLastPresetPath(f_preset);
 }
 
 
@@ -61,8 +64,6 @@ string FileIO::LoadLastPresetPath(FileIOFlags type) {
 
     return pathFromFile;
 }
-
-
 
 bool FileIO::SaveXML(string presetXML, std::string path) {
     
@@ -366,7 +367,7 @@ string FileIO::saveFileDialog(FileIOFlags filetype, path defaultName) {
         ofn.lpstrDefExt = "bmp";   // no leading dot
         break;
     case f_preset:
-        ofn.lpstrFilter = "Vision preset (*.xml)\0*.xml\0";
+        ofn.lpstrFilter = "RoutCarrier preset (*.xml)\0*.xml\0";
         ofn.lpstrDefExt = "xml";
         initialDir = PresetFolder.string();
         break;

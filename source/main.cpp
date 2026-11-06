@@ -5,6 +5,7 @@ int main() {
     
     // Launch Program, GUI and Audio Engine
     unique_ptr<Program> prog = make_unique<Program>();
+    prog->audio.CurrentPreset.Load();                   // load last preset
 
     // Main GUI Loop
     while (1) {

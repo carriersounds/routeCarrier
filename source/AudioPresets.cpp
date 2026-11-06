@@ -9,15 +9,15 @@ void GlobalPreset::Load(FileIOFlags openDialog, string path) {
     Logger::log("Loading preset...", level_INFO, source_FILES);
 
     if (openDialog == f_openDialog)
-        PresetFilePath = FileIO::OpenFileDialog(f_preset);
+        PresetFilePath = FileIO::OpenFileDialog(f_preset);          // Check filepath
     else if (path.size())
         PresetFilePath = path;
     else
-        PresetFilePath = FileIO::LastPreset.string();
+        PresetFilePath = FileIO::LoadLastPresetPath(f_preset);
 
     if (PresetFilePath.size() < 1) return;
 
-    node::SetCurrentEditor(engine->prog->gui.node_Context);
+    node::SetCurrentEditor(engine->prog->gui.node_Context);         // Needed for node locations and link management
     engine->clearAll();
 
     bool LocalCoInitialize = SUCCEEDED(CoInitializeEx(nullptr, 0));
@@ -30,22 +30,23 @@ void GlobalPreset::Load(FileIOFlags openDialog, string path) {
     long countNode = 0;
     IXMLDOMNodeList* NodeList = FileIO::XmlSelectNodes(xml, L"/PRESET/NODES/NODE", countNode);
    
+    // Load all nodes
     for (long i = 0; i < countNode; i++) {
         IXMLDOMNode* SingleNode = FileIO::XmlNodeAt(NodeList, i);
         if (!SingleNode) continue;
 
-        BlockType type = (BlockType)FileIO::XmlAttrInt(SingleNode, L"type");
+        BlockType type = (BlockType)FileIO::XmlAttrInt(SingleNode, L"type");            // Get type & ID
         NodeID ID = FileIO::XmlAttrInt(SingleNode, L"id");
 
         if (type == BlockType::InputDevice || type == BlockType::OutputDevice) 
-           engine->addNewDeviceNode(type, FileIO::XmlAttr(SingleNode, L"name"), ID);      
+           engine->addNewDeviceNode(type, FileIO::XmlAttr(SingleNode, L"name"), ID);    // Create in engine
         else 
-            engine->addNewDSPNode(type,ID);
+           engine->addNewDSPNode(type,ID);
         
         ImVec2 SetPos = { FileIO::XmlAttrFloat(SingleNode, L"posX"),FileIO::XmlAttrFloat(SingleNode, L"posY") };     
         node::SetNodePosition(ID, SetPos);
    
-        // switch case param handler ?
+        engine->nodes.at(ID)->currentState.AssignParameters(SingleNode);                // Set param values
 
         SingleNode->Release();
     }
@@ -54,7 +55,8 @@ void GlobalPreset::Load(FileIOFlags openDialog, string path) {
       
     long countLink = 0;
     IXMLDOMNodeList* LinkList = FileIO::XmlSelectNodes(xml, L"/PRESET/LINKS/LINK", countLink);
-
+    
+    // Load all links
     for (long i = 0; i < countLink; i++) {
         IXMLDOMNode* SingleLink = FileIO::XmlNodeAt(LinkList, i);
         if (!SingleLink) continue;
@@ -69,21 +71,14 @@ void GlobalPreset::Load(FileIOFlags openDialog, string path) {
 
 
     Logger::log("Loaded preset: " + PresetFilePath, level_INFO, source_FILES);
-
-    // Link list
-
-
-
     node::SetCurrentEditor(nullptr);
     if (xml)
     xml->Release();
     FileIO::SaveLastPresetPath(f_preset, path);
     if (LocalCoInitialize) CoUninitialize();
-
 }
 
 void GlobalPreset::Save(FileIOFlags openDialog, string path){
-
 
     string savePath;
 
@@ -96,12 +91,9 @@ void GlobalPreset::Save(FileIOFlags openDialog, string path){
 
     if (savePath.size() < 1) return;
 
-
     int VERSION = 1;
-
     string out = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
     out += "<PRESET version=\" "+ to_string(VERSION) + "\">\n";
-
     out += "   <GLOBAL>\n";
     out += "      <SETUP LastID=\"" + to_string(engine->uniqueID) + "\"/>\n";
     out += "   </GLOBAL>\n";
@@ -115,7 +107,6 @@ void GlobalPreset::Save(FileIOFlags openDialog, string path){
         out += lp.ToXML();
 
     out += "   </LINKS>\n";
- 
     out += "</PRESET>";
 
     Logger::log("Saved preset to : " + savePath, level_INFO, source_FILES);
@@ -125,18 +116,12 @@ void GlobalPreset::Save(FileIOFlags openDialog, string path){
 
 void GlobalPreset::LoadToEngine() {
 
-
-
-
-
-
     // settings within dsp / device node (gain)
     // missing devices
     // message if the preset is from an older/newer version
 
 }
 
-// Requires context for location information
 string NodePreset::saveCurrentState(node::EditorContext* context) {
 
     string NodeStateString;
@@ -160,3 +145,55 @@ string NodePreset::saveCurrentState(node::EditorContext* context) {
     return NodeStateString;     // confirmed working
 }
 
+void NodePreset::AssignParameters(IXMLDOMNode* XMLParams) {
+
+    for (auto& GUIParam : this->params) {
+
+        switch (GUIParam.type) {
+        case ParamType::Float: 
+            *(float*)GUIParam.paramPtr = FileIO::XmlAttrFloat(XMLParams, tools::StringToWide(GUIParam.name).c_str());
+             break;
+        case ParamType::Int: 
+             *(int*)GUIParam.paramPtr = FileIO::XmlAttrInt(XMLParams, tools::StringToWide(GUIParam.name).c_str());       
+             break;
+        case ParamType::Bool: 
+            *(bool*)GUIParam.paramPtr = FileIO::XmlAttrBool(XMLParams, tools::StringToWide(GUIParam.name).c_str());
+             break;
+        case ParamType::String: 
+            *(string*)GUIParam.paramPtr = FileIO::XmlAttr(XMLParams, tools::StringToWide(GUIParam.name).c_str());       // might break with pointers ?
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+string GUIParam::saveParamValue(){
+    switch (type)
+    {
+    case ParamType::Float: {
+        float* cast = (float*)paramPtr;
+        return to_string(*cast);
+    }
+        break;
+    case ParamType::Int: {
+        int* cast = (int*)paramPtr;
+        return to_string(*cast);
+    }
+        break;
+    case ParamType::Bool: {
+        bool* cast = (bool*)paramPtr;
+        return to_string(*cast);
+    }
+        break;
+    case ParamType::String: {
+        string* cast = (string*)paramPtr;
+        return *cast;
+    }
+        break;
+    default:
+        break;
+    }
+
+
+}

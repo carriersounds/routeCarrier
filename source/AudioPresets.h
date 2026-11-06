@@ -17,37 +17,8 @@ struct GUIParam {
     void* paramPtr;
     ParamType type;
 
-    // dereference and save to string (XML format)
-    string saveParamValue() {
-        switch (type)
-        {
-        case ParamType::Float: {
-            float* cast = (float*)paramPtr;
-            return to_string(*cast);
-        }
-                             break;
-        case ParamType::Int: {
-            int* cast = (int*)paramPtr;
-            return to_string(*cast);
-        }
-                           break;
-        case ParamType::Bool: {
-            bool* cast = (bool*)paramPtr;
-            return to_string(*cast);
-        }
-                            break;
-        case ParamType::String: {
-            string* cast = (string*)paramPtr;
-            return *cast;
-        }
-                              break;
-        default:
-            break;
-        }
-
-
-    }  
-
+   
+    string saveParamValue();                // dereference and save to string (XML format)
 };
 
 class NodePreset {
@@ -66,6 +37,7 @@ public:
     vector<GUIParam> params;
 
     string saveCurrentState(node::EditorContext* context);
+    void AssignParameters(IXMLDOMNode* params);
 
     // dereference all pointers and SET params based on strings
     // initial Node Preset (empty) during construction (know which params there are)   
@@ -95,7 +67,7 @@ public:
     GlobalPreset(AudioEngine* engine) : engine(engine) {};
     AudioEngine* engine;  
 
-    void Load(FileIOFlags openDialog, string path = "");
+    void Load(FileIOFlags openDialog = f_noDialog, string path = "");
     void Save(FileIOFlags openDialog, string path = "");
 
     void LoadToEngine();

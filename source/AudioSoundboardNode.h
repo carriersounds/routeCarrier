@@ -38,8 +38,6 @@ public:
     void prepareOutput() override;
     void onPresetLoaded() override;            
 
-    void setFileIO(FileIO* io) { fileIO = io; }
-
     // ---- control (GUI thread) ----
     bool loadPad(int index, const juce::File& file);
     void clearPad(int index);

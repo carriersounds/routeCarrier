@@ -1,10 +1,11 @@
 ﻿#include "AudioDeviceNode.h"
 #include "Program.h"
 
-DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID)
+DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID,double engineRate)
         : hardwareFIFO(FIFOSIZE),
         hardwareBuffer(2, FIFOSIZE),
         srcBuffer(2,1024),
+        
         AudioNode(blocktype,initDeviceName,nodeID),
         devicePointer(nullptr),
         trigger(nullptr),
@@ -25,7 +26,7 @@ DeviceNode::DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID 
 
     deviceManager.getAudioDeviceSetup(setup);
     setup.bufferSize = BLOCKSIZE;
-    setup.sampleRate = 48e3;
+    setup.sampleRate = engineRate;  // attempt to sync with enginerate
 
     deviceManager.setAudioDeviceSetup(setup, true);
     blockSize = BLOCKSIZE;
@@ -341,10 +342,9 @@ void DeviceNode::audioDeviceAboutToStart(juce::AudioIODevice* device)
     sampleRate = device->getCurrentSampleRate();
     blockSize = device->getCurrentBufferSizeSamples();
 
-    SRC_base = 48000.0f / sampleRate;
+    SRC_base = engineRate / sampleRate;
     SRC_ratio = SRC_base;
 
-    
 
     if(isInput())
         numChannels = device->getActiveInputChannels().countNumberOfSetBits();

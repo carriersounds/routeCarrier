@@ -63,7 +63,6 @@ void AudioEngine::run() {
 void AudioEngine::Load(FileIOFlags openDialog, string path) {
 
     std::string PresetFilePath;
-    Logger::log("Loading preset...", level_INFO, source_FILES);
 
     if (openDialog == f_openDialog)
         PresetFilePath = FileIO::OpenFileDialog(f_preset);          // Check filepath
@@ -73,6 +72,8 @@ void AudioEngine::Load(FileIOFlags openDialog, string path) {
         PresetFilePath = FileIO::LoadLastPresetPath(f_preset);
 
     if (PresetFilePath.size() < 1) return;
+
+    Logger::log("Loading preset " + PresetFilePath + "...", level_INFO, source_FILES);
 
     node::SetCurrentEditor(prog->gui.node_Context);         // Needed for node locations and link management
     clearAll();
@@ -96,9 +97,9 @@ void AudioEngine::Load(FileIOFlags openDialog, string path) {
         NodeID ID = FileIO::XmlAttrInt(SingleNode, L"id");
 
         if (type == BlockType::InputDevice || type == BlockType::OutputDevice)
-            addNewDeviceNode(type, FileIO::XmlAttr(SingleNode, L"name"), ID);    // Create in engine, explicit ID assignment    || Add check for missing devices!
+            addNewDeviceNode(type, FileIO::XmlAttr(SingleNode, L"name"), ID);    // Create in engine, explicit ID assignment    
         else if (type == BlockType::FileInput || type == BlockType::FileOutput || type == BlockType::Soundboard)
-            addNewFileNode(type, ID);
+            addNewFileNode(type, ID);                                                                                          
         else
             addNewDSPNode(type, ID);
 
@@ -106,6 +107,13 @@ void AudioEngine::Load(FileIOFlags openDialog, string path) {
         node::SetNodePosition(ID, SetPos);
 
         nodes.at(ID)->currentState.AssignParameters(SingleNode);                // Set param values
+
+        if(nodes.at(ID)->isPlayer() || nodes.at(ID)->isSoundboard())
+            nodes.at(ID)->onPresetLoaded();     // load files
+
+        // File & Device nodes: 
+        // add files on creation
+        // Add check for missing devices!
 
         SingleNode->Release();
     }
@@ -127,7 +135,6 @@ void AudioEngine::Load(FileIOFlags openDialog, string path) {
         SingleLink->Release();
     }
     if (LinkList) LinkList->Release();
-    q21
 
     Logger::log("Loaded preset: " + PresetFilePath, level_INFO, source_FILES);
     node::SetCurrentEditor(nullptr);
@@ -321,9 +328,9 @@ NodeID AudioEngine::addNewDeviceNode(BlockType blockType, juce::String initDevic
 
     m_PinNodePairs.emplace(pinID, blockID);                 // make the parent node easier to find using a LUT                                                                     
     
-   fifoLevels.emplace(blockID,FifoData());                          // add channel for fifo monitoring (debug)
+    fifoLevels.emplace(blockID,FifoData());                 // add channel for fifo monitoring (debug)
     
-    sends.emplace(blockID, vector<NodeID>());
+    sends[blockID] = {};
 
     DeviceNode* devptr = dynamic_cast<DeviceNode*>(nodes[blockID].get());
 
@@ -383,7 +390,7 @@ NodeID AudioEngine::addNewDSPNode(BlockType typeOfEffect, NodeID presetNodeID) {
     DSPNode* dspptr = dynamic_cast<DSPNode*>(nodes.at(blockID).get());
     Logger::log(("Added " + dspptr->getBlockName()).c_str());
 
-    dspptr->prepareToPlay(48000, BLOCKSIZE);                                 // initialize samplerates 
+    dspptr->prepareToPlay(mainOutSampleRate, BLOCKSIZE);                     // initialize samplerates 
     nodes.at(blockID)->addPin(inputPinID, pinType::input);                   // assign pins
     nodes.at(blockID)->addPin(outputPinID, pinType::output);
 
@@ -397,57 +404,33 @@ NodeID AudioEngine::addNewDSPNode(BlockType typeOfEffect, NodeID presetNodeID) {
 
 NodeID AudioEngine::addNewFileNode(BlockType blockType, NodeID PresetNodeID)
 {
-    if (blockType != BlockType::FileInput &&
-        blockType != BlockType::FileOutput &&
-        blockType != BlockType::Soundboard) {
-        Logger::log("addNewFileNode: unsupported block type", level_ERROR, source_AUDIO);
-        return 0;
-    }
-
     std::lock_guard<std::mutex> lock(nodeLock);
+    NodeID newID = getNewID(Identifier::node, PresetNodeID);
 
-    NodeID newID = getNewID(Identifier::node, PresetNodeID);    // PresetNodeID == 0 -> fresh ID
-
-    // ---- create ----
-    unique_ptr<AudioNode> node;
     switch (blockType)
     {
-    case BlockType::FileInput: {
-        auto n = make_unique<AudioFileNode>(blockType, "Audio File Player", newID);
-        n->setFileIO(&prog->fileIO);                // for the open dialog
-        node = std::move(n);
+    case BlockType::FileInput: 
+        nodes[newID] = make_unique<AudioFileNode>(blockType, "Audio File Player", newID);
+        break; 
+    case BlockType::FileOutput: 
+        nodes[newID] = make_unique<AudioFileNode>(blockType, "Audio File Recorder", newID);
+        break;   
+    case BlockType::Soundboard: 
+        nodes[newID] = make_unique<AudioSoundboardNode>(blockType, "Soundboard", newID);
+        break; 
+    default:
+        Logger::log("addNewFileNode: unsupported block type", level_ERROR, source_AUDIO);
+        return 0;
         break;
-    }
-    case BlockType::FileOutput: {
-        auto n = make_unique<AudioFileNode>(blockType, "Audio File Recorder", newID);
-        n->setFileIO(&prog->fileIO);                // for the save dialog
-        node = std::move(n);
-        break;
-    }
-    case BlockType::Soundboard: {
-        auto n = make_unique<AudioSoundboardNode>(blockType, "Soundboard", newID);
-        n->setFileIO(&prog->fileIO);
-        node = std::move(n);
-        break;
-    }
-    default: break;
     }
 
-    // ---- pin: players / soundboard are sources (output pin), recorder is a sink (input pin) ----
-    const pinType direction = (blockType == BlockType::FileOutput) ? pinType::input
-        : pinType::output;
+    const pinType direction = (blockType == BlockType::FileOutput) ? pinType::input: pinType::output;
     const PinID pinID = getNewID(Identifier::pin);
-    node->addPin(pinID, direction);
+    nodes[newID]->addPin(pinID, direction);
     m_PinNodePairs[pinID] = newID;
-
-    // ---- register ----
-    sends[newID] = {};                              // GUI link validation does sends.at(node), so it must exist
-    nodes[newID] = std::move(node);
-
-    Logger::log("Added " + nodes[newID]->getBlockName() + " (ID " + to_string(newID) + ")",
-        level_INFO, source_AUDIO);
-
-    // topologicalSortNodes();                      // only if addNewDeviceNode does this on creation
+    sends[newID] = {};              
+    Logger::log("Added " + nodes[newID]->getBlockName() + " (ID " + to_string(newID) + ")", level_INFO, source_AUDIO);
+    topologicalSortNodes();                      
 
     return newID;
 }
@@ -525,7 +508,8 @@ void AudioEngine::selectMainOutput(NodeID nodeID) {
     devptr = dynamic_cast<DeviceNode*>(nodes.at(nodeID).get());
     devptr->setAsMainOutput(true);
 
-   // mainOutSampleRate = devptr->sampleRate;
+
+    //mainOutSampleRate = devptr->sampleRate;
 }
 
 void AudioEngine::clearAll() {

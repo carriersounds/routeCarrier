@@ -11,10 +11,8 @@ class FileIO;
 
 TODO: 
 fix general sizing of gui elements and node size
-fix samplerate conversion
 check file playback hiccup on gui button interaction
 check crash on recording (?)
-remove fileio pointer sharing, just use the static :: for function calls
 
 soundboard feature check: 
     presets?
@@ -23,7 +21,6 @@ soundboard feature check:
     Make interface larger, fix text
     fix dropdown menu for play mode
     remove load/clear button. replace with + on empty slot
-
 
 
 AudioFileNode - file player / recorder node.
@@ -54,13 +51,10 @@ public:
     // AudioNode
     void renderAsNode(float pinSize, float spacing) override;
     void prepareOutput() override;
-    void onPresetLoaded() override;     // requires: virtual void onPresetLoaded() {} in AudioNode
-
-    // Wiring (engine calls this after creating the node, for the file dialogs)
-    void setFileIO(FileIO* io) { fileIO = io; }
+    void onPresetLoaded() override;    
 
     // ---- Player control (GUI thread) ----
-    bool loadFile(const juce::File& file);
+    bool loadFile(string fpath);
     void unloadFile();
     void play();
     void pause();
@@ -82,8 +76,6 @@ private:
     void renderRecorderInterface();
     void pollPlaybackState();
     void runPendingDialogs();
-
-    FileIO* fileIO = nullptr;
 
     // declared first -> destroyed last (writer / transport must be gone before the thread stops)
     juce::TimeSliceThread diskThread;

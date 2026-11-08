@@ -49,6 +49,7 @@ public:
     static IXMLDOMNodeList* XmlSelectNodes(IXMLDOMDocument2* xml, const wchar_t* xpath, long& countOut);
     static IXMLDOMNode*     XmlSelectSingle(IXMLDOMDocument2* xml, const wchar_t* xpath);
     static IXMLDOMNode*     XmlNodeAt(IXMLDOMNodeList* list, long index);
+    static string           xmlEscape(const std::string& s);
 
     static string            XmlAttr(IXMLDOMNode* node, const wchar_t* attrName);
     static int               XmlAttrInt(IXMLDOMNode* node, const wchar_t* attrName, int fallback = 0);

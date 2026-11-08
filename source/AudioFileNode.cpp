@@ -38,7 +38,7 @@ void AudioFileNode::onPresetLoaded()
 
     juce::File f(juce::String::fromUTF8(filePath.c_str()));
     if (f.existsAsFile())
-        loadFile(f);
+        loadFile(filePath);
     else    // keep filePath so re-saving the preset doesn't lose it
         Logger::log("Player: file not found: " + filePath, level_WARNING, source_FILES);
 }
@@ -55,8 +55,11 @@ AudioFileNode::~AudioFileNode()
 // ============================================================================
 //  PLAYER
 // ============================================================================
-bool AudioFileNode::loadFile(const juce::File& file)
+bool AudioFileNode::loadFile(string fpath)
 {
+
+    const juce::File file(fpath);
+
     std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
     if (reader == nullptr) {
         Logger::log("Could not open audio file: " + file.getFullPathName().toStdString(), level_ERROR, source_FILES);
@@ -84,6 +87,8 @@ bool AudioFileNode::loadFile(const juce::File& file)
     seekPos = 0.0f;
 
     Logger::log("Loaded audio file: " + file.getFullPathName().toStdString(), level_INFO, source_FILES);
+    
+    Logger::log("file rate " + to_string(fileRate) + " -> engine rate " + to_string(sampleRate), level_INFO, source_FILES);
     return true;
 }
 
@@ -409,18 +414,19 @@ void AudioFileNode::runPendingDialogs()
 {
     if (pendingLoadDialog) {
         pendingLoadDialog = false;
-        if (fileIO) {
-            string path = fileIO->OpenFileDialog(f_audio);
-            if (!path.empty()) loadFile(juce::File(juce::String(path)));
-        }
+    
+        string path = FileIO::OpenFileDialog(f_audio);
+        if (!path.empty()) loadFile(path);
+        
     }
 
     if (pendingRecordDialog) {
         pendingRecordDialog = false;
 
         string path;
-        if (fileIO) path = fileIO->saveFileDialog(f_audio);
-        else path = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+        path = FileIO::saveFileDialog(f_audio);
+
+        if(path.empty()) path = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
                         .getChildFile("routeCarrier_" + juce::Time::getCurrentTime().formatted("%Y-%m-%d_%H.%M.%S") + ".wav")
                         .getFullPathName().toStdString();
 

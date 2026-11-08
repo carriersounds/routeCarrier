@@ -334,9 +334,9 @@ void AudioSoundboardNode::runPendingDialogs()
     if (pendingLoadPad >= 0) {
         const int idx = pendingLoadPad;
         pendingLoadPad = -1;
-        if (fileIO) {
-            string path = fileIO->OpenFileDialog(f_audio);
-            if (!path.empty()) loadPad(idx, juce::File(juce::String(path)));
-        }
+       
+        string path = FileIO::OpenFileDialog(f_audio);
+        if (!path.empty()) loadPad(idx, juce::File(juce::String(path)));
+        
     }
 }

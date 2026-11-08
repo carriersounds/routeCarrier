@@ -114,7 +114,7 @@ public:
     BaseID uniqueID;
 private:
 
-    float mainOutSampleRate = 48000;
+    float mainOutSampleRate = 44100;
 
     BaseID getNewID(Identifier type, BaseID presetComponentID = 0);
     void calculateSends(LinkID newlink);

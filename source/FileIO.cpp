@@ -252,7 +252,17 @@ string FileIO::XmlEscape(const std::string& text) {
     }
     return out;
 }
-
+string FileIO::xmlEscape(const std::string& s) {
+    std::string o; o.reserve(s.size());
+    for (char c : s) switch (c) {
+    case '&': o += "&amp;";  break;
+    case '<': o += "&lt;";   break;
+    case '>': o += "&gt;";   break;
+    case '"': o += "&quot;"; break;
+    default:  o += c;
+    }
+    return o;
+}
 
 // ---------  Misc / helpers  ------------
 std::filesystem::path FileIO::getEXEDir() {

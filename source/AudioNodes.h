@@ -35,6 +35,7 @@ public:
 	// Called from main engine loop
 	virtual void prepareOutput() = 0;		// can only run if all it's inputs have been mixed into its inputbuffer (requires topo sort)
 	void sendAudioToNextNodes();			// also sends it to its gui buffer
+	virtual void setSampleRate(double sr) { sampleRate = sr; }
 
 	// GUI
 	virtual void renderAsNode(float pinSize, float spacing) = 0;
@@ -50,7 +51,8 @@ public:
 	PinID outputPin;
 	std::map<NodeID,AudioNode*> nextNodes;
 	juce::AudioBuffer<float> inputBuffer;		// can be filled by other members
-	double sampleRate = 48000;
+	double sampleRate = 44100;
+	double engineRate = 44100;
 	int blockSize = BLOCKSIZE;
 	int numChannels = 2;
 	bool bypass = false;                      // simple toggle 

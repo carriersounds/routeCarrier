@@ -9,7 +9,7 @@
 class DeviceNode final : public juce::AudioIODeviceCallback, public AudioNode 
 {
 public:
-    DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID);
+    DeviceNode(BlockType blocktype, juce::String initDeviceName, NodeID nodeID, double engineRate = 44100.0);
     ~DeviceNode() override {
         deviceManager.removeAudioCallback(this);
         deviceManager.closeAudioDevice();

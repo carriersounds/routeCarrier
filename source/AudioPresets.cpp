@@ -67,10 +67,11 @@ string GUIParam::saveParamValue(){
         break;
     case ParamType::String: {
         string* cast = (string*)paramPtr;
-        return *cast;
+        return FileIO::xmlEscape(*cast);    // to handle filenames
     }
         break;
     default:
+        return {};
         break;
     }
 

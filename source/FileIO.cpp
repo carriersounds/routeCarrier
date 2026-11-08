@@ -1,7 +1,5 @@
 #include "FileIO.h"
 #include "Program.h"
-
-
 #include "FileIO.h"
 #include "Program.h"
 
@@ -363,8 +361,8 @@ string FileIO::saveFileDialog(FileIOFlags filetype, path defaultName) {
     switch (filetype)
     {
     case f_audio:
-        ofn.lpstrFilter = "PNG (*.png)\0*.png\0" "JPEG (*.jpg)\0*.jpg\0" "BMP (*.bmp)\0*.bmp\0";
-        ofn.lpstrDefExt = "bmp";   // no leading dot
+        ofn.lpstrFilter = "mp3 (*.mp3)\0*.mp3\0" "wav (*.wav)\0*.wav\0";
+        ofn.lpstrDefExt = "mp3";   // no leading dot
         break;
     case f_preset:
         ofn.lpstrFilter = "RoutCarrier preset (*.xml)\0*.xml\0";
@@ -440,7 +438,7 @@ string FileIO::OpenFileDialog(FileIOFlags filetype) {
 
     switch (filetype)
     {
-    case f_audio:  ofn.lpstrFilter = ("Image files\0*.png;*.bmp;*.tif;*.jpg;*.jpeg;*.tiff\0");
+    case f_audio:  ofn.lpstrFilter = ("Audio files\0*.mp3;*.wav;*.flac;*.m4a;*.aac;*.ogg\0");
         break;
     case f_preset:  ofn.lpstrFilter = "Vision presets\0*.XML;*.xml\0";
         initialDir = PresetFolder.string();

@@ -746,9 +746,20 @@ void GUI::renderToolbar() {
     ImGui::Dummy({ 5,2 });
 
 
+    if (ImGui::Button("File Input")) prog->audio.addNewFileNode(BlockType::FileInput);
+    tools::ImDragDropMacro(dropper, BlockType::FileInput);
+    ImGui::SameLine();
+    if (ImGui::Button("File Output")) prog->audio.addNewFileNode(BlockType::FileOutput);
+    tools::ImDragDropMacro(dropper, BlockType::FileOutput);
+
+    // toolbar buttons
+    if (ImGui::Button("Soundboard"))   prog->audio.addNewFileNode(BlockType::Soundboard);
+    tools::ImDragDropMacro(dropper, BlockType::Soundboard);
+
+    ImGui::Separator();
+    ImGui::Dummy({ 5,2 });
 
     prog->audio.application.drawImGui();
-
 
     ImGui::NewLine();
     ImGui::Separator();
@@ -880,13 +891,33 @@ void GUI::renderMixPanel() {
             IM_ASSERT(payload->DataSize == sizeof(BlockType));
             BlockType dragPayload = *(const BlockType*)payload->Data;
 
-            if (dragPayload == BlockType::InputDevice || dragPayload == BlockType::OutputDevice) {
-                nodeToGiveInitPosition = prog->audio.addNewDeviceNode(grabbedType, grabbedDevice);
-            }
-            else {
-                nodeToGiveInitPosition = prog->audio.addNewDSPNode(dragPayload);
-            }
 
+            switch (dragPayload)
+            {
+            case BlockType::NullDevice:
+                break;
+            case BlockType::InputDevice:
+            case BlockType::OutputDevice:
+                nodeToGiveInitPosition = prog->audio.addNewDeviceNode(grabbedType, grabbedDevice);
+                break;
+            case BlockType::FileInput:
+            case BlockType::FileOutput:
+            case BlockType::Soundboard:
+                nodeToGiveInitPosition = prog->audio.addNewFileNode(dragPayload);
+                break;
+            case BlockType::Filter:
+            case BlockType::Gain:
+            case BlockType::Reverb:
+            case BlockType::EQ:
+            case BlockType::Saturator:
+            case BlockType::ChannelUtil:
+            case BlockType::Compressor:
+            case BlockType::Phaser:
+                nodeToGiveInitPosition = prog->audio.addNewDSPNode(dragPayload);
+                break;
+            default:
+                break;
+            }       
             node::SetNodePosition(nodeToGiveInitPosition, ImGui::GetMousePos()); //once, to make sure it drops on the right spot!
         }
 

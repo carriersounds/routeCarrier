@@ -10,13 +10,13 @@
 #include "AudioVisualizerNode.h"
 #include "AudioPresets.h"
 #include "AudioApplicationNode.h"
-
+#include "AudioFileNode.h"
+#include "AudioSoundboardNode.h"
 class Program;
 
 /*
 * 
 NEW TODO 2026:
-
 
 - NodeType: Application audio stream input
 - NodeType: Loopback capture source
@@ -56,18 +56,10 @@ TODO:
     !! just like OBS
 
 later: 
-- save preset
 - make sure you can't make the same link >1 times
 - ability to choose ASIO (like pioneer ddj for routing)
 - move log of block creation to node constructor
 - only switch case is the template for creation, rest can do with get blocktype
-
-
-
-PRESET:
-
-Audio Engine controls 
-
 */
 
 class AudioEngine {
@@ -101,6 +93,9 @@ public:
     // Node Interface
     NodeID addNewDeviceNode(BlockType blockType, juce::String initDeviceName, NodeID PresetNodeID = 0);  // preset    // choose input or output, returns next ID
     NodeID addNewDSPNode(BlockType typeOfEffect, NodeID PresetNodeID = 0);                               // preset    // effects = enum in function input, return is for GUI i think?   
+    
+    NodeID addNewFileNode(BlockType type, NodeID presetID = 0);
+    
     void createLink(node::PinId leftPin, node::PinId rightPin, LinkID presetID = 0);                     // preset  
     void deleteNode(NodeID deviceID);                                             
     void deleteLink(LinkID linkID);                                                                                           
@@ -111,6 +106,7 @@ public:
     float engineClockTimeMs = 0;
     float engineProcessTimeMs = 0;
 
+    // Loading / Saving as a preset (XML)
     void Load(FileIOFlags openDialog = f_noDialog, string path = "");
     void Save(FileIOFlags openDialog, string path = "");
 

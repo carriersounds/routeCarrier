@@ -151,6 +151,12 @@
     <ClCompile Include="source\AudioApplicationNode.cpp">
       <Filter>Audio Engine</Filter>
     </ClCompile>
+    <ClCompile Include="source\AudioFileNode.cpp">
+      <Filter>Audio Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AudioSoundboardNode.cpp">
+      <Filter>Audio Engine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\mainHeader.hpp">
@@ -253,6 +259,12 @@
       <Filter>Audio Engine</Filter>
     </ClInclude>
     <ClInclude Include="source\AudioApplicationNode.h">
+      <Filter>Audio Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioFileNode.h">
+      <Filter>Audio Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioSoundboardNode.h">
       <Filter>Audio Engine</Filter>
     </ClInclude>
   </ItemGroup>

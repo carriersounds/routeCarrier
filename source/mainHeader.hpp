@@ -82,6 +82,7 @@ enum class BlockType {
     OutputDevice,
     FileInput,
     FileOutput,
+    Soundboard,
     Filter,
     Gain,
     Reverb,

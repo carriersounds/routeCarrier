@@ -60,7 +60,6 @@ void AudioEngine::run() {
     }
 }
 
-
 void AudioEngine::Load(FileIOFlags openDialog, string path) {
 
     std::string PresetFilePath;
@@ -97,7 +96,9 @@ void AudioEngine::Load(FileIOFlags openDialog, string path) {
         NodeID ID = FileIO::XmlAttrInt(SingleNode, L"id");
 
         if (type == BlockType::InputDevice || type == BlockType::OutputDevice)
-            addNewDeviceNode(type, FileIO::XmlAttr(SingleNode, L"name"), ID);    // Create in engine
+            addNewDeviceNode(type, FileIO::XmlAttr(SingleNode, L"name"), ID);    // Create in engine, explicit ID assignment    || Add check for missing devices!
+        else if (type == BlockType::FileInput || type == BlockType::FileOutput || type == BlockType::Soundboard)
+            addNewFileNode(type, ID);
         else
             addNewDSPNode(type, ID);
 
@@ -122,16 +123,15 @@ void AudioEngine::Load(FileIOFlags openDialog, string path) {
         LinkID Lid = FileIO::XmlAttrInt(SingleLink, L"ID");
         PinID LeftPin = FileIO::XmlAttrInt(SingleLink, L"Left");
         PinID RightPin = FileIO::XmlAttrInt(SingleLink, L"Right");
-        createLink(LeftPin, RightPin, Lid);
+        createLink(LeftPin, RightPin, Lid);                                     // create link with explicit ID assignment
         SingleLink->Release();
     }
     if (LinkList) LinkList->Release();
-
+    q21
 
     Logger::log("Loaded preset: " + PresetFilePath, level_INFO, source_FILES);
     node::SetCurrentEditor(nullptr);
-    if (xml)
-        xml->Release();
+    if (xml) xml->Release();
     FileIO::SaveLastPresetPath(f_preset, path);
     if (LocalCoInitialize) CoUninitialize();
 }
@@ -171,7 +171,6 @@ void AudioEngine::Save(FileIOFlags openDialog, string path) {
 
     FileIO::SaveXML(out, savePath);
 }
-
 
 BaseID AudioEngine::getNewID(Identifier type, BaseID PresetNodeID) {
 
@@ -394,6 +393,63 @@ NodeID AudioEngine::addNewDSPNode(BlockType typeOfEffect, NodeID presetNodeID) {
     topologicalSortNodes();                                                  // to add to sortedNodes
 
     return blockID;
+}
+
+NodeID AudioEngine::addNewFileNode(BlockType blockType, NodeID PresetNodeID)
+{
+    if (blockType != BlockType::FileInput &&
+        blockType != BlockType::FileOutput &&
+        blockType != BlockType::Soundboard) {
+        Logger::log("addNewFileNode: unsupported block type", level_ERROR, source_AUDIO);
+        return 0;
+    }
+
+    std::lock_guard<std::mutex> lock(nodeLock);
+
+    NodeID newID = getNewID(Identifier::node, PresetNodeID);    // PresetNodeID == 0 -> fresh ID
+
+    // ---- create ----
+    unique_ptr<AudioNode> node;
+    switch (blockType)
+    {
+    case BlockType::FileInput: {
+        auto n = make_unique<AudioFileNode>(blockType, "Audio File Player", newID);
+        n->setFileIO(&prog->fileIO);                // for the open dialog
+        node = std::move(n);
+        break;
+    }
+    case BlockType::FileOutput: {
+        auto n = make_unique<AudioFileNode>(blockType, "Audio File Recorder", newID);
+        n->setFileIO(&prog->fileIO);                // for the save dialog
+        node = std::move(n);
+        break;
+    }
+    case BlockType::Soundboard: {
+        auto n = make_unique<AudioSoundboardNode>(blockType, "Soundboard", newID);
+        n->setFileIO(&prog->fileIO);
+        node = std::move(n);
+        break;
+    }
+    default: break;
+    }
+
+    // ---- pin: players / soundboard are sources (output pin), recorder is a sink (input pin) ----
+    const pinType direction = (blockType == BlockType::FileOutput) ? pinType::input
+        : pinType::output;
+    const PinID pinID = getNewID(Identifier::pin);
+    node->addPin(pinID, direction);
+    m_PinNodePairs[pinID] = newID;
+
+    // ---- register ----
+    sends[newID] = {};                              // GUI link validation does sends.at(node), so it must exist
+    nodes[newID] = std::move(node);
+
+    Logger::log("Added " + nodes[newID]->getBlockName() + " (ID " + to_string(newID) + ")",
+        level_INFO, source_AUDIO);
+
+    // topologicalSortNodes();                      // only if addNewDeviceNode does this on creation
+
+    return newID;
 }
 
 void AudioEngine::deleteNode(NodeID nodeToDelete) {

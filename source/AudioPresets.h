@@ -55,6 +55,10 @@ public:
     void defineSetting<bool>(const string& settingName, bool* setting) {
         params.emplace_back(settingName, setting, ParamType::Bool);
     }
+    template<>
+    void defineSetting<std::string>(const string& settingName, std::string* setting) {
+        params.emplace_back(settingName, setting, ParamType::String);
+    }
 
 
 };

@@ -14,7 +14,11 @@ public:
 	// Main Interface
 	bool isInput() const { return (m_blockType == BlockType::InputDevice); }
 	bool isOutput() const { return (m_blockType == BlockType::OutputDevice); }
-	bool isDSP() const { return ((int)m_blockType > 4); }
+	bool isDSP() const { return ((int)m_blockType >= (int)BlockType::Filter); }
+	bool isPlayer()   const { return m_blockType == BlockType::FileInput; }
+	bool isRecorder() const { return m_blockType == BlockType::FileOutput; }
+	bool isSoundboard() const { return m_blockType == BlockType::Soundboard; }
+
 	NodeID getID() const { return ID; }
 	void addPin(PinID pinID, pinType type) {
 		if (type == pinType::input) inputPin = pinID;
@@ -36,6 +40,8 @@ public:
 	virtual void renderAsNode(float pinSize, float spacing) = 0;
 	bool showInterface = 1;
 	ImVec2 startPos;
+
+	virtual void onPresetLoaded() {}			// for file loading & such
 
 
 	// Data
